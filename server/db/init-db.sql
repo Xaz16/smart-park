@@ -1,7 +1,3 @@
--- Создание базы данных
-CREATE DATABASE smart_parking;
-\c smart_parking;
-
 -- Создание типа для ролей
 CREATE TYPE USER_ROLE AS ENUM ('parking_administrator', 'service_admin');
 
