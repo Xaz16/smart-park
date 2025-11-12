@@ -1,0 +1,328 @@
+# Smart Parking Server - Coding Standards and Architecture Rules
+
+## Project Structure
+
+The server follows a clean architecture pattern with clear separation of concerns:
+
+```
+server/
+├── src/
+│   ├── config/          # Configuration (database connection)
+│   ├── controllers/     # Request handlers (business logic, validation, auth checks)
+│   ├── middleware/      # Express middleware (auth, error handling)
+│   ├── repositories/    # Data access layer (Repository pattern)
+│   ├── routes/          # API route definitions
+│   ├── types/           # TypeScript type definitions
+│   ├── utils/           # Utility functions (JWT, access checks)
+│   ├── app.ts           # Express app configuration
+│   └── server.ts        # Application entry point
+├── db/                  # SQL initialization scripts
+└── package.json
+```
+
+## Architecture Patterns
+
+### Repository Pattern
+- **ALL database queries MUST be in repositories**, never in controllers
+- Controllers should only call repository methods, not execute SQL directly
+- Each entity has its own repository file in `src/repositories/`
+- Repositories return domain objects or null (never throw "not found" errors)
+- Controllers handle business logic, validation, and error responses
+- Repositories handle data access only
+
+### Controller Responsibilities
+- Validate request data
+- Check authentication and authorization
+- Call repository methods
+- Handle errors and return appropriate HTTP responses
+- **DO NOT write SQL queries in controllers**
+- **DO NOT access database pool directly in controllers**
+
+### Repository Responsibilities
+- Execute SQL queries
+- Return data in domain model format
+- Handle database-specific errors (convert to domain errors if needed)
+- Support filtering and query parameters
+- **DO NOT handle HTTP responses**
+- **DO NOT check authentication/authorization** (this is controller's job)
+
+## Authentication and Authorization
+
+### User Roles
+1. **Driver (driver)** - No authentication required, read-only access (GET requests only)
+2. **Parking Administrator (parking_administrator)** - Can manage only assigned parkings
+3. **Service Admin (service_admin)** - Full access to all system functions
+
+### Authentication Flow
+- JWT tokens are used for authentication
+- Tokens are passed in `Authorization: Bearer <token>` header
+- Use `optionalAuthenticate` middleware for endpoints accessible to drivers (GET requests)
+- Use `authenticate` middleware for endpoints requiring authentication (POST, PUT, DELETE)
+- User information is available in `req.user` after authentication
+
+### Authorization Checks
+- Controllers must check user roles before performing operations
+- Parking administrators can only access parkings assigned to them via `user_parking` table
+- Service admins have full access to everything
+- Use `checkParkingAccessFromRequest` utility for parking access validation
+- Use `userParkingRepository.checkAccess()` to verify parking access
+
+## Database Access Rules
+
+### Repository Methods
+- `findAll()` - Get all records (supports filtering by user role when needed)
+- `findById(id)` - Get record by ID (returns null if not found)
+- `create(data)` - Create new record (returns created record)
+- `update(id, data)` - Update record (returns updated record or null if not found)
+- `delete(id)` - Delete record (returns boolean indicating success)
+- Additional helper methods as needed (e.g., `checkAccess()`, `getParkingId()`)
+
+### SQL Query Guidelines
+- Always use parameterized queries (`$1, $2, etc.`) to prevent SQL injection
+- Use `RETURNING *` for INSERT and UPDATE queries to get the created/updated record
+- Handle JSON fields properly: use `JSON.stringify()` when inserting, PostgreSQL returns them as objects
+- Check `result.rowCount` for delete operations
+- Check `result.rows.length` to determine if record exists
+
+### Error Handling
+- Repositories return `null` when record is not found (never throw errors for missing records)
+- Controllers check for `null` and throw `AppError` with appropriate status code
+- Database constraint violations (unique, foreign key) are caught in controllers
+- Error codes:
+  - `23505` - Unique constraint violation
+  - `23503` - Foreign key constraint violation
+
+## TypeScript Standards
+
+### Types
+- All domain types are defined in `src/types/index.ts`
+- Use interfaces for data structures
+- Use type aliases for unions (e.g., `UserRole`)
+- Types for input data should have `Input` suffix (e.g., `CreateParkingInput`)
+- Types for update data should have `Update` prefix (e.g., `UpdateParkingInput`)
+
+### Type Safety
+- Always use TypeScript types, avoid `any`
+- Use type assertions (`as`) only when necessary and with caution
+- Repository methods return typed domain objects or `null`
+- Controllers use types from `src/types/index.ts`
+
+## API Endpoint Patterns
+
+### Public Endpoints (Driver Access)
+- GET requests only
+- No authentication required
+- Use `optionalAuthenticate` middleware
+- Return data for all users or filtered based on query parameters
+
+### Protected Endpoints
+- POST, PUT, DELETE requests require authentication
+- Use `authenticate` middleware
+- Check user role in controller
+- Verify parking access for parking administrators
+
+### Response Format
+```typescript
+{
+  status: 'success' | 'error',
+  data: T,  // or message: string for errors
+}
+```
+
+### HTTP Status Codes
+- `200` - Success (GET, PUT)
+- `201` - Created (POST)
+- `204` - No Content (DELETE)
+- `400` - Bad Request (validation errors)
+- `401` - Unauthorized (authentication required)
+- `403` - Forbidden (insufficient permissions)
+- `404` - Not Found
+- `409` - Conflict (unique constraint violation)
+- `500` - Internal Server Error
+
+## Password Handling
+
+- Passwords are hashed using bcrypt before storing in database
+- Use `bcrypt.hash()` with salt rounds of 10
+- Never store plain text passwords
+- Passwords in input types are plain text (will be hashed in controller)
+- Password hash is stored in `password_hash` field
+
+## JSON Fields
+
+- `coordinates` in `parking_spot` table is JSON
+- `spots_state` in `parking_history` table is JSON (array of numbers)
+- Use `JSON.stringify()` when inserting/updating JSON fields
+- PostgreSQL automatically parses JSON fields when reading
+
+## Error Handling
+
+### AppError Class
+- Use `AppError` class for all application errors
+- Provide meaningful error messages
+- Set appropriate HTTP status codes
+- Error handler middleware catches all errors and returns formatted responses
+
+### Error Handling Flow
+1. Repository returns `null` if record not found
+2. Controller checks for `null` and throws `AppError`
+3. Error handler middleware catches errors and sends response
+4. Database constraint violations are caught in controllers
+
+## Code Organization
+
+### File Naming
+- Controllers: `*Controller.ts` (e.g., `parkingController.ts`)
+- Repositories: `*Repository.ts` (e.g., `parkingRepository.ts`)
+- Routes: `*Routes.ts` (e.g., `parkingRoutes.ts`)
+- Types: `index.ts` (all types in one file)
+
+### Import Order
+1. External libraries (express, bcrypt, etc.)
+2. Internal modules (config, middleware, types)
+3. Repositories
+4. Utils
+
+### Function Organization
+- Export functions in logical order (GET, POST, PUT, DELETE)
+- Group related functionality together
+- Use consistent naming conventions
+
+## Security Best Practices
+
+1. **Never expose sensitive data** (password hashes, internal IDs) in API responses
+2. **Always validate input data** in controllers before calling repositories
+3. **Use parameterized queries** to prevent SQL injection
+4. **Check user permissions** before allowing operations
+5. **Hash passwords** before storing in database
+6. **Use JWT tokens** for authentication
+7. **Set proper CORS** headers
+8. **Validate JWT secret** is set in production environment
+
+## Testing Considerations
+
+- Repositories can be easily mocked for unit testing
+- Controllers are decoupled from database implementation
+- Use dependency injection patterns where possible
+- Test authentication and authorization separately
+
+## Common Patterns
+
+### Creating a Record
+```typescript
+// Controller
+const data: CreateEntityInput = req.body;
+if (!data.requiredField) {
+  throw new AppError('Required field is missing', 400);
+}
+const entity = await entityRepository.create(data);
+res.status(201).json({ status: 'success', data: entity });
+
+// Repository
+async create(data: CreateEntityInput): Promise<Entity> {
+  const result = await pool.query(
+    'INSERT INTO entity (field1, field2) VALUES ($1, $2) RETURNING *',
+    [data.field1, data.field2]
+  );
+  return result.rows[0];
+}
+```
+
+### Updating a Record
+```typescript
+// Controller
+const updates: UpdateEntityInput = req.body;
+if (Object.keys(updates).filter(key => updates[key] !== undefined).length === 0) {
+  throw new AppError('No fields to update', 400);
+}
+const entity = await entityRepository.update(id, updates);
+if (!entity) {
+  throw new AppError('Entity not found', 404);
+}
+
+// Repository
+async update(id: number, data: UpdateEntityInput): Promise<Entity | null> {
+  const fields: string[] = [];
+  const values: any[] = [];
+  let paramCount = 1;
+  
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined) {
+      fields.push(`${key} = $${paramCount}`);
+      values.push(value);
+      paramCount++;
+    }
+  });
+  
+  if (fields.length === 0) return null;
+  
+  values.push(id);
+  const result = await pool.query(
+    `UPDATE entity SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+    values
+  );
+  
+  return result.rows[0] || null;
+}
+```
+
+### Checking Access
+```typescript
+// For parking administrators
+if (req.user.role === 'parking_administrator') {
+  const hasAccess = await userParkingRepository.checkAccess(
+    req.user.userId,
+    parkingId
+  );
+  if (!hasAccess) {
+    throw new AppError('Access denied', 403);
+  }
+}
+```
+
+## Environment Variables
+
+Required environment variables:
+- `DB_HOST` - Database host
+- `DB_PORT` - Database port
+- `DB_NAME` - Database name
+- `DB_USER` - Database user
+- `DB_PASSWORD` - Database password
+- `PORT` - Server port
+- `JWT_SECRET` - JWT secret key (required in production)
+- `JWT_EXPIRES_IN` - JWT expiration time (default: '24h')
+
+## Important Notes
+
+1. **Never write SQL in controllers** - Always use repositories
+2. **Never access database pool directly in controllers** - Use repositories
+3. **Always validate input data** - Check required fields in controllers
+4. **Always check user permissions** - Verify role and access before operations
+5. **Handle errors properly** - Use AppError class and error handler middleware
+6. **Return proper HTTP status codes** - Follow REST API best practices
+7. **Use TypeScript types** - Avoid `any` type
+8. **Keep controllers thin** - Business logic in repositories, validation in controllers
+9. **Follow naming conventions** - Consistent naming across the codebase
+10. **Document complex logic** - Add comments for non-obvious code
+
+## Migration and Database Changes
+
+- Database schema is defined in `db/init-db.sql`
+- Always update schema file when making database changes
+- Test database migrations before deploying
+- Use transactions for complex operations if needed
+
+## Code Review Checklist
+
+When reviewing or modifying server code:
+- [ ] All SQL queries are in repositories, not controllers
+- [ ] Controllers validate input data
+- [ ] Authentication and authorization are checked
+- [ ] Error handling is proper (AppError, status codes)
+- [ ] TypeScript types are used correctly
+- [ ] No sensitive data is exposed in responses
+- [ ] Passwords are hashed before storing
+- [ ] JSON fields are handled correctly
+- [ ] HTTP status codes are appropriate
+- [ ] Code follows existing patterns and conventions
+
