@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+    <title>Smart Parking</title>
+    <link rel="stylesheet" href="main.css">
+</head>
+<body>
+    <!-- шапка -->
+    <header class="header">
+        <div class="logo">Умная парковка от УраганDev</div>
+        <button class="auth-icon" onclick="openAuthModal()">
+            👤
+        </button>
+    </header>
+
+    <!-- main -->
+    <main class="main-content">
+        <section class="parking-details">
+            <p>Адрес: <span id="parkingAddress">—</span></p>
+            <p>ID: <span id="parkingId">—</span></p>
+            <p>Статус: <span id="parkingStatus">—</span></p>
+            <p>Координаты: <span id="parkingCoords">—</span></p>
+            <p>Создана: <span id="parkingCreated">—</span></p>
+        </section>
+        <section class="video-section">
+            <h2 class="video-title">Парковка №1</h2>
+            <div class="video-container">
+                <div class="video-placeholder">
+                    <img src="c:\Users\user\OneDrive\Рабочий стол\Новая папка\parking_result2.jpg" alt="видеотрансляция">
+                </div>
+            </div>
+            
+            <!-- статистика парковки и легенда -->
+            <div class="parking-info">
+                <div class="parking-stats">
+                    <div>Всего мест: <span id="totalSpaces">14</span></div>
+                    <div><span style="color: #219a52;"> Свободно: <span id="freeSpaces">15</span></span></div>
+                </div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="color-box free"></div>
+                        <span style="color:#219a52;">Свободно</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box occupied"></div>
+                        <span style="color: #e74c3c;">Занято</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- кнопка менюшки -->
+            <div class="video-controls">
+                
+                <button class="sidebar-toggle" onclick="toggleSidebar()">
+                    ☰ Меню
+                </button>
+            </div>
+        </section>
+
+        
+    </main>
+
+    <!-- сайдбар -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>Список парковок</h2>
+            <button class="sidebar-close" onclick="toggleSidebar()">×</button>
+        </div>
+        <div class="sidebar-content">
+            <h3>Доступные парковки</h3>
+            <ul class="parking-list" id="parkingList"></ul>
+        </div>
+    </div>
+
+    
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+    <!-- окно авторизации -->
+    <div class="auth-modal" id="authModal">
+        <button onclick="closeAuthModal()" style="width: 20px; margin: 0 0 10px;">×</button>
+        <h2 style="padding: 0 0 20px;">Авторизация</h2>
+        <form class="auth-form">
+            <input type="text" placeholder="Логин" required>
+            <input type="password" placeholder="Пароль" required>
+            <button type="submit">Войти</button>
+        </form>
+    </div>
+
+    <div class="loader-overlay" id="loader">
+        <div class="loader"></div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
