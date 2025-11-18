@@ -1,5 +1,6 @@
 import app from './app';
 import pool from './config/database';
+import { parkingImageService } from './services/parkingImageService';
 
 const PORT = process.env.PORT || 3000;
 
@@ -12,6 +13,7 @@ pool
     // Start server
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
+      parkingImageService.startDemoRotation();
     });
   })
   .catch((err) => {

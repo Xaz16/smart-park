@@ -3,6 +3,7 @@ import { AppError } from '../middleware/errorHandler';
 import { CreateParkingInput, UpdateParkingInput } from '../types';
 import { parkingRepository } from '../repositories/parkingRepository';
 import { userParkingRepository } from '../repositories/userParkingRepository';
+import { parkingImageService } from '../services/parkingImageService';
 
 export const getAllParkings = async (
   req: Request,
@@ -14,10 +15,14 @@ export const getAllParkings = async (
     const userRole = req.user?.role;
 
     const parkings = await parkingRepository.findAll(userId, userRole);
+    const parkingsWithPictures = parkings.map((parking) => ({
+      ...parking,
+      last_picture: parkingImageService.getLastPictureUrl(parking.id),
+    }));
 
     res.json({
       status: 'success',
-      data: parkings,
+      data: parkingsWithPictures,
     });
   } catch (error) {
     next(error);
@@ -39,7 +44,10 @@ export const getParkingById = async (
 
     res.json({
       status: 'success',
-      data: parking,
+      data: {
+        ...parking,
+        last_picture: parkingImageService.getLastPictureUrl(parking.id),
+      },
     });
   } catch (error) {
     next(error);

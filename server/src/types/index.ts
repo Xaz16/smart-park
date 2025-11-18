@@ -18,6 +18,7 @@ export interface Parking {
   longitude: number | null;
   is_active: boolean;
   created_at: Date;
+  last_picture?: string | null;
 }
 
 export interface CreateParkingInput {

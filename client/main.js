@@ -1,6 +1,7 @@
 const API_HOST = 'https://smartparkistu.ru';
 const PARKINGS_ENDPOINT = `${API_HOST}/api/parkings`;
 const POLLING_INTERVAL = 15000;
+const parkingImageElement = document.getElementById('parkingImage');
 
 let parkingData = [];
 let currentVideo = 0;
@@ -49,6 +50,7 @@ function updateVideoDisplay() {
     document.getElementById('parkingStatus').textContent = currentParking.isActive ? 'Активна' : 'Неактивна';
     document.getElementById('parkingCoords').textContent = `${currentParking.latitude}, ${currentParking.longitude}`;
     document.getElementById('parkingCreated').textContent = formatDate(currentParking.createdAt);
+    updateParkingImage(currentParking.lastPicture);
     startParkingPolling();
 }
 
@@ -113,8 +115,33 @@ function formatParking(parking) {
         isActive: parking.is_active,
         latitude: parking.latitude || '—',
         longitude: parking.longitude || '—',
-        createdAt: parking.created_at || parking.createdAt || null
+        createdAt: parking.created_at || parking.createdAt || null,
+        lastPicture: resolveImageUrl(parking.last_picture || parking.lastPicture)
     };
+}
+
+function resolveImageUrl(imagePath) {
+    if (!imagePath || typeof imagePath !== 'string') {
+        return null;
+    }
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+        return imagePath;
+    }
+    return `${API_HOST}${imagePath}`;
+}
+
+function updateParkingImage(imageUrl) {
+    if (!parkingImageElement) {
+        return;
+    }
+    if (imageUrl) {
+        const cacheBuster = Date.now();
+        parkingImageElement.src = `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}t=${cacheBuster}`;
+        parkingImageElement.alt = 'Последнее изображение парковки';
+    } else {
+        parkingImageElement.removeAttribute('src');
+        parkingImageElement.alt = 'Нет изображения';
+    }
 }
 
 async function fetchParkingDetails(parkingId) {
