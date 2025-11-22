@@ -1,4 +1,5 @@
 const API_HOST = 'https://smartparkistu.ru';
+// const API_HOST = 'http://localhost:3000';
 const PARKINGS_ENDPOINT = `${API_HOST}/api/parkings`;
 const POLLING_INTERVAL = 15000;
 const parkingImageElement = document.getElementById('parkingImage');
@@ -43,13 +44,81 @@ function updateVideoDisplay() {
 
     selectedParkingId = currentParking.id;
     document.querySelector('.video-title').textContent = currentParking.title;
-    document.getElementById('totalSpaces').textContent = currentParking.totalSpaces;
-    document.getElementById('freeSpaces').textContent = currentParking.freeSpaces;
+
+    // Используем данные анализа от нейронной сети
+    const totalSpaces = currentParking.hasAnalysis
+        ? currentParking.totalSpaces
+        : (currentParking.totalSpaces || '—');
+    const freeSpaces = currentParking.hasAnalysis
+        ? currentParking.freeSpaces
+        : '—';
+    const occupiedSpaces = currentParking.hasAnalysis
+        ? currentParking.occupiedSpaces
+        : '—';
+
+    const totalSpacesElement = document.getElementById('totalSpaces');
+    const freeSpacesElement = document.getElementById('freeSpaces');
+    const occupiedSpacesElement = document.getElementById('occupiedSpaces');
+
+    if (totalSpacesElement) {
+        totalSpacesElement.textContent = totalSpaces;
+    }
+    if (freeSpacesElement) {
+        freeSpacesElement.textContent = freeSpaces;
+    }
+    if (occupiedSpacesElement) {
+        occupiedSpacesElement.textContent = occupiedSpaces;
+    }
+
+    // Обновляем стиль для свободных мест в зависимости от наличия данных анализа
+    if (freeSpacesElement) {
+        if (currentParking.hasAnalysis) {
+            freeSpacesElement.style.color = '#219a52';
+            if (freeSpacesElement.parentElement) {
+                freeSpacesElement.parentElement.style.color = '#219a52';
+            }
+        } else {
+            freeSpacesElement.style.color = '#999';
+            if (freeSpacesElement.parentElement) {
+                freeSpacesElement.parentElement.style.color = '#999';
+            }
+        }
+    }
+
     document.getElementById('parkingAddress').textContent = currentParking.address;
     document.getElementById('parkingId').textContent = currentParking.id;
     document.getElementById('parkingStatus').textContent = currentParking.isActive ? 'Активна' : 'Неактивна';
     document.getElementById('parkingCoords').textContent = `${currentParking.latitude}, ${currentParking.longitude}`;
     document.getElementById('parkingCreated').textContent = formatDate(currentParking.createdAt);
+
+    // Отображаем время последнего обновления анализа, если доступно
+    const lastUpdateInfoElement = document.getElementById('lastUpdateInfo');
+    if (lastUpdateInfoElement) {
+        if (currentParking.hasAnalysis && currentParking.analysisLastUpdate) {
+            const lastUpdateDate = new Date(currentParking.analysisLastUpdate);
+            const now = new Date();
+            const diffMs = now - lastUpdateDate;
+            const diffSeconds = Math.floor(diffMs / 1000);
+            const diffMinutes = Math.floor(diffSeconds / 60);
+
+            let timeAgo = '';
+            if (diffSeconds < 60) {
+                timeAgo = `${diffSeconds} сек. назад`;
+            } else if (diffMinutes < 60) {
+                timeAgo = `${diffMinutes} мин. назад`;
+            } else {
+                const diffHours = Math.floor(diffMinutes / 60);
+                timeAgo = `${diffHours} ч. назад`;
+            }
+
+            lastUpdateInfoElement.textContent = `Обновлено: ${timeAgo}`;
+            lastUpdateInfoElement.style.color = '#219a52';
+        } else {
+            lastUpdateInfoElement.textContent = 'Данные анализа недоступны';
+            lastUpdateInfoElement.style.color = '#999';
+        }
+    }
+
     updateParkingImage(currentParking.lastPicture);
     startParkingPolling();
 }
@@ -106,17 +175,40 @@ function startParkingPolling() {
 }
 
 function formatParking(parking) {
+    // Используем данные анализа от нейронной сети, если они доступны
+    const analysis = parking.analysis;
+    const totalSpots = analysis?.total_spots ?? parking.total_spots ?? '—';
+    const freeSpots = analysis?.free_spots ?? '—';
+    const occupiedSpots = analysis?.occupied_spots ?? '—';
+    const spotsState = analysis?.spots_state || null;
+    const slotDetails = analysis?.slot_details || null;
+    const lastUpdate = analysis?.last_update || null;
+
+    // Используем изображение от камеры, если доступно
+    const cameraImageUrl = parking.camera?.image_url
+        ? resolveImageUrl(parking.camera.image_url)
+        : null;
+
+    // Приоритет: изображение от камеры > last_picture
+    const imageUrl = cameraImageUrl || resolveImageUrl(parking.last_picture || parking.lastPicture);
+
     return {
         title: parking.name || 'Парковка',
-        totalSpaces: parking.total_spots ?? '—',
-        freeSpaces: parking.total_spots ?? '—',
+        totalSpaces: totalSpots,
+        freeSpaces: freeSpots,
+        occupiedSpaces: occupiedSpots,
+        spotsState: spotsState,
+        slotDetails: slotDetails,
         address: parking.address || '—',
         id: parking.id || '—',
         isActive: parking.is_active,
         latitude: parking.latitude || '—',
         longitude: parking.longitude || '—',
         createdAt: parking.created_at || parking.createdAt || null,
-        lastPicture: resolveImageUrl(parking.last_picture || parking.lastPicture)
+        lastPicture: imageUrl,
+        camera: parking.camera || null,
+        analysisLastUpdate: lastUpdate,
+        hasAnalysis: analysis !== null && analysis !== undefined
     };
 }
 
@@ -135,12 +227,24 @@ function updateParkingImage(imageUrl) {
         return;
     }
     if (imageUrl) {
+        // Добавляем cache buster для обновления изображения при polling
+        // Для static камер изображение меняется каждые 15 секунд
         const cacheBuster = Date.now();
-        parkingImageElement.src = `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}t=${cacheBuster}`;
-        parkingImageElement.alt = 'Последнее изображение парковки';
+        const separator = imageUrl.includes('?') ? '&' : '?';
+        parkingImageElement.src = `${imageUrl}${separator}t=${cacheBuster}`;
+        parkingImageElement.alt = 'Изображение с камеры парковки';
+        parkingImageElement.onerror = function () {
+            // Если изображение не загрузилось, скрываем его
+            this.style.display = 'none';
+        };
+        parkingImageElement.onload = function () {
+            // Показываем изображение при успешной загрузке
+            this.style.display = '';
+        };
     } else {
         parkingImageElement.removeAttribute('src');
         parkingImageElement.alt = 'Нет изображения';
+        parkingImageElement.style.display = 'none';
     }
 }
 
@@ -169,6 +273,12 @@ async function fetchParkingDetails(parkingId) {
         }
     } catch (error) {
         console.error('Failed to refresh parking:', error);
+        // При ошибке обновления показываем, что данные могут быть устаревшими
+        const lastUpdateInfoElement = document.getElementById('lastUpdateInfo');
+        if (lastUpdateInfoElement && selectedParkingId === parkingId) {
+            lastUpdateInfoElement.textContent = 'Ошибка обновления данных';
+            lastUpdateInfoElement.style.color = '#e74c3c';
+        }
     }
 }
 

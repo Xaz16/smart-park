@@ -3,7 +3,7 @@ import { AppError } from '../middleware/errorHandler';
 import { CreateParkingInput, UpdateParkingInput } from '../types';
 import { parkingRepository } from '../repositories/parkingRepository';
 import { userParkingRepository } from '../repositories/userParkingRepository';
-import { parkingImageService } from '../services/parkingImageService';
+import { cameraService } from '../services/cameraService';
 
 export const getAllParkings = async (
   req: Request,
@@ -15,14 +15,50 @@ export const getAllParkings = async (
     const userRole = req.user?.role;
 
     const parkings = await parkingRepository.findAll(userId, userRole);
-    const parkingsWithPictures = parkings.map((parking) => ({
-      ...parking,
-      last_picture: parkingImageService.getLastPictureUrl(parking.id),
-    }));
+    
+    // Добавляем результаты анализа от NN и информацию о камере для каждой парковки
+    const parkingsWithAnalysis = parkings.map((parking) => {
+      const analysis = cameraService.getParkingAnalysis(parking.id);
+      const cameraInfo = cameraService.getParkingCameraInfo(parking.id);
+      
+      // Логирование для отладки синхронизации
+      if (analysis && cameraInfo) {
+        console.log(
+          `[ParkingController] Parking ${parking.id}: ` +
+          `Image analyzed: ${analysis.imageName}, ` +
+          `Image URL: ${cameraInfo.imageUrl}, ` +
+          `Free: ${analysis.result.free_spots}/${analysis.result.total_spots}, ` +
+          `Occupied: ${analysis.result.occupied_spots}/${analysis.result.total_spots}`
+        );
+      }
+      
+      return {
+        ...parking,
+        analysis: analysis
+          ? {
+              spots_state: analysis.result.spots_state,
+              total_spots: analysis.result.total_spots,
+              free_spots: analysis.result.free_spots,
+              occupied_spots: analysis.result.occupied_spots,
+              slot_details: analysis.result.slot_details || [],
+              last_update: analysis.lastUpdate,
+              image_name: analysis.imageName, // Добавляем имя изображения для отладки
+            }
+          : null,
+        camera: cameraInfo
+          ? {
+              id: cameraInfo.cameraId,
+              name: cameraInfo.cameraName,
+              type: cameraInfo.cameraType,
+              image_url: cameraInfo.imageUrl,
+            }
+          : null,
+      };
+    });
 
     res.json({
       status: 'success',
-      data: parkingsWithPictures,
+      data: parkingsWithAnalysis,
     });
   } catch (error) {
     next(error);
@@ -42,11 +78,44 @@ export const getParkingById = async (
       throw new AppError('Parking not found', 404);
     }
 
+    // Добавляем результаты анализа от NN и информацию о камере для этой парковки
+    const analysis = cameraService.getParkingAnalysis(parking.id);
+    const cameraInfo = cameraService.getParkingCameraInfo(parking.id);
+
+    // Логирование для отладки синхронизации
+    if (analysis && cameraInfo) {
+      console.log(
+        `[ParkingController] GET /api/parkings/${parking.id}: ` +
+        `Image analyzed: ${analysis.imageName}, ` +
+        `Image URL: ${cameraInfo.imageUrl}, ` +
+        `Free: ${analysis.result.free_spots}/${analysis.result.total_spots}, ` +
+        `Occupied: ${analysis.result.occupied_spots}/${analysis.result.total_spots}`
+      );
+    }
+
     res.json({
       status: 'success',
       data: {
         ...parking,
-        last_picture: parkingImageService.getLastPictureUrl(parking.id),
+        analysis: analysis
+          ? {
+              spots_state: analysis.result.spots_state,
+              total_spots: analysis.result.total_spots,
+              free_spots: analysis.result.free_spots,
+              occupied_spots: analysis.result.occupied_spots,
+              slot_details: analysis.result.slot_details || [],
+              last_update: analysis.lastUpdate,
+              image_name: analysis.imageName, // Добавляем имя изображения для отладки
+            }
+          : null,
+        camera: cameraInfo
+          ? {
+              id: cameraInfo.cameraId,
+              name: cameraInfo.cameraName,
+              type: cameraInfo.cameraType,
+              image_url: cameraInfo.imageUrl,
+            }
+          : null,
       },
     });
   } catch (error) {

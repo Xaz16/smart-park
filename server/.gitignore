@@ -5,3 +5,6 @@ dist/
 .DS_Store
 .env.prod
 docker-compose.prod.yml
+docker-compose.infrastructure.yml
+deploy.sh
+DEPLOYMENT.md

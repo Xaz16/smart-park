@@ -1,6 +1,9 @@
 -- Создание типа для ролей
 CREATE TYPE USER_ROLE AS ENUM ('parking_administrator', 'service_admin');
 
+-- Создание типа для типов камер
+CREATE TYPE CAMERA_TYPE AS ENUM ('rtsp', 'static', 'http', 'file');
+
 -- Таблица парковок
 CREATE TABLE parking (
     id BIGSERIAL PRIMARY KEY,
@@ -17,7 +20,8 @@ CREATE TABLE parking (
 CREATE TABLE camera (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    rtsp_url VARCHAR(500) NOT NULL,
+    camera_type CAMERA_TYPE NOT NULL DEFAULT 'rtsp',
+    rtsp_url VARCHAR(500), -- Может быть NULL для static камер
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

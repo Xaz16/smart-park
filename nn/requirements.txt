@@ -1,0 +1,10 @@
+# Легкие зависимости (устанавливаются быстро)
+Pillow>=10.0.0
+flask>=3.0.0
+flask-cors>=4.0.0
+numpy>=1.24.0
+opencv-python-headless>=4.8.0
+
+# PyTorch CPU-only версия устанавливается отдельно в Dockerfile
+# для более быстрой установки (CPU версия ~200MB vs CUDA версия ~2GB)
+

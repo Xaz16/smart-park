@@ -54,8 +54,14 @@ export const createCamera = async (
 
     const data: CreateCameraInput = req.body;
 
-    if (!data.name || !data.rtsp_url) {
-      throw new AppError('Name and rtsp_url are required', 400);
+    if (!data.name) {
+      throw new AppError('Name is required', 400);
+    }
+
+    // Для rtsp камер rtsp_url обязателен
+    const cameraType = data.camera_type || 'rtsp';
+    if (cameraType === 'rtsp' && !data.rtsp_url) {
+      throw new AppError('rtsp_url is required for rtsp cameras', 400);
     }
 
     const camera = await cameraRepository.create(data);

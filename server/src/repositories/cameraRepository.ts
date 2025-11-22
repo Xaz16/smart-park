@@ -22,13 +22,13 @@ export class CameraRepository {
   }
 
   async create(data: CreateCameraInput): Promise<Camera> {
-    const { name, rtsp_url, is_active = true } = data;
+    const { name, camera_type = 'rtsp', rtsp_url, is_active = true } = data;
 
     const result = await pool.query(
-      `INSERT INTO camera (name, rtsp_url, is_active)
-       VALUES ($1, $2, $3)
+      `INSERT INTO camera (name, camera_type, rtsp_url, is_active)
+       VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [name, rtsp_url, is_active]
+      [name, camera_type, rtsp_url || null, is_active]
     );
 
     return result.rows[0];

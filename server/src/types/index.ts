@@ -3,6 +3,9 @@ export type UserRole = 'parking_administrator' | 'service_admin';
 // Роль водителя не хранится в БД, используется для публичного доступа
 export type AllUserRoles = UserRole | 'driver';
 
+// Типы камер
+export type CameraType = 'rtsp' | 'static' | 'http' | 'file';
+
 export interface JWTPayload {
   userId: number;
   username: string;
@@ -42,20 +45,23 @@ export interface UpdateParkingInput {
 export interface Camera {
   id: number;
   name: string;
-  rtsp_url: string;
+  camera_type: CameraType;
+  rtsp_url: string | null;
   is_active: boolean;
   created_at: Date;
 }
 
 export interface CreateCameraInput {
   name: string;
-  rtsp_url: string;
+  camera_type?: CameraType; // По умолчанию 'rtsp'
+  rtsp_url?: string | null; // Обязательно для rtsp, не нужно для static
   is_active?: boolean;
 }
 
 export interface UpdateCameraInput {
   name?: string;
-  rtsp_url?: string;
+  camera_type?: CameraType;
+  rtsp_url?: string | null;
   is_active?: boolean;
 }
 
