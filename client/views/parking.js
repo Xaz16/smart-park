@@ -1,4 +1,3 @@
-// Страница деталей парковки
 class ParkingView {
     constructor() {
         this.parkingData = null;
@@ -14,7 +13,6 @@ class ParkingView {
         const mainContent = document.querySelector('.main-content');
         if (!mainContent) return;
 
-        // Проверяем, является ли пользователь service_admin
         const user = authService.getUser();
         const isServiceAdmin = user && user.role === 'service_admin';
 
@@ -286,7 +284,6 @@ class ParkingView {
     openEditModal() {
         // Переходим на страницу управления парковками и открываем модальное окно редактирования
         router.navigate('/service-admin/parkings');
-        // Ждем, пока страница загрузится, и открываем модальное окно
         setTimeout(() => {
             if (window.serviceAdminParkingsView && this.parkingId) {
                 window.serviceAdminParkingsView.openEditModal(this.parkingId);

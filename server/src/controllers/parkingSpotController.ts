@@ -18,7 +18,6 @@ export const getAllParkingSpots = async (
     const userId = req.user?.userId;
     const userRole = req.user?.role;
 
-    // Если указан parking_id и пользователь - администратор парковки, проверяем доступ
     if (parkingId && req.user && req.user.role === 'parking_administrator') {
       await checkParkingAccessFromRequest(req, parkingId);
     }
@@ -79,7 +78,6 @@ export const createParkingSpot = async (
       );
     }
 
-    // Проверяем доступ к парковке
     await checkParkingAccessFromRequest(req, data.parking_id);
 
     const spot = await parkingSpotRepository.create(data);

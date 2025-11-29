@@ -16,12 +16,10 @@ export const getAllParkings = async (
 
     const parkings = await parkingRepository.findAll(userId, userRole);
     
-    // Добавляем результаты анализа от NN и информацию о камере для каждой парковки
     const parkingsWithAnalysis = parkings.map((parking) => {
       const analysis = cameraService.getParkingAnalysis(parking.id);
       const cameraInfo = cameraService.getParkingCameraInfo(parking.id);
       
-      // Логирование для отладки синхронизации
       if (analysis && cameraInfo) {
         console.log(
           `[ParkingController] Parking ${parking.id}: ` +
@@ -78,11 +76,9 @@ export const getParkingById = async (
       throw new AppError('Парковка не найдена', 404);
     }
 
-    // Добавляем результаты анализа от NN и информацию о камере для этой парковки
     const analysis = cameraService.getParkingAnalysis(parking.id);
     const cameraInfo = cameraService.getParkingCameraInfo(parking.id);
 
-    // Логирование для отладки синхронизации
     if (analysis && cameraInfo) {
       console.log(
         `[ParkingController] GET /api/parkings/${parking.id}: ` +
@@ -129,7 +125,6 @@ export const createParking = async (
   next: NextFunction
 ) => {
   try {
-    // Только администратор сервиса может создавать парковки
     if (!req.user || req.user.role !== 'service_admin') {
       throw new AppError('Только суперадминистратор может создавать парковки', 403);
     }
@@ -164,7 +159,6 @@ export const updateParking = async (
     const { id } = req.params;
     const parkingId = parseInt(id);
 
-    // Проверяем доступ к парковке
     if (req.user.role === 'parking_administrator') {
       const hasAccess = await userParkingRepository.checkAccess(
         req.user.userId,
@@ -208,7 +202,6 @@ export const deleteParking = async (
   next: NextFunction
 ) => {
   try {
-    // Только администратор сервиса может удалять парковки
     if (!req.user || req.user.role !== 'service_admin') {
       throw new AppError('Только суперадминистратор может удалять парковки', 403);
     }

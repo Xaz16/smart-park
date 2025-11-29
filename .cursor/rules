@@ -188,6 +188,18 @@ server/
 - Group related functionality together
 - Use consistent naming conventions
 
+### Code Comments
+- **Avoid comments, especially obvious ones** - Code should be self-documenting
+- Only add comments for truly complex or non-obvious logic
+- Do not add comments that simply restate what the code does
+- Examples of unnecessary comments to avoid:
+  - `// Находим пользователя` before `const user = await findUser()`
+  - `// Проверяем пароль` before `if (!isValidPassword)`
+  - `// Генерируем токен` before `const token = generateToken()`
+  - `// Добавляем модальные окна` before `this.renderModal()`
+- Class names and function names should be descriptive enough to understand their purpose
+- JSDoc comments are acceptable for public APIs and complex utility functions
+
 ## Security Best Practices
 
 1. **Never expose sensitive data** (password hashes, internal IDs) in API responses
@@ -303,7 +315,7 @@ Required environment variables:
 7. **Use TypeScript types** - Avoid `any` type
 8. **Keep controllers thin** - Business logic in repositories, validation in controllers
 9. **Follow naming conventions** - Consistent naming across the codebase
-10. **Document complex logic** - Add comments for non-obvious code
+10. **Avoid comments, especially obvious ones** - Code should be self-documenting. Only add comments for truly complex or non-obvious logic. Do not add comments that simply restate what the code does (e.g., "// Находим пользователя", "// Проверяем пароль", "// Генерируем токен"). Class names and function names should be descriptive enough to understand their purpose without comments.
 
 ## Migration and Database Changes
 

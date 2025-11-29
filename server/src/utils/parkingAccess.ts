@@ -14,12 +14,10 @@ export const checkParkingAccess = async (
   parkingId: number,
   userRole: string
 ): Promise<boolean> => {
-  // Администратор сервиса имеет доступ ко всем парковкам
   if (userRole === 'service_admin') {
     return true;
   }
 
-  // Для администратора парковки проверяем доступ через таблицу user_parking
   if (userRole === 'parking_administrator') {
     const hasAccess = await userParkingRepository.checkAccess(userId, parkingId);
 

@@ -10,7 +10,6 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB
   },
   fileFilter: (req, file, cb) => {
-    // Разрешаем только изображения
     if (
       file.mimetype === 'image/jpeg' ||
       file.mimetype === 'image/jpg' ||

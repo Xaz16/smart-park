@@ -60,7 +60,6 @@ export class AppUserRepository {
     const values: any[] = [];
     let paramCount = 1;
 
-    // Если пароль указан, добавляем его хэш
     if (passwordHash) {
       fields.push(`password_hash = $${paramCount}`);
       values.push(passwordHash);

@@ -22,7 +22,7 @@ export const optionalAuthenticate = (
     const authHeader = req.headers.authorization;
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7); // Убираем 'Bearer '
+      const token = authHeader.substring(7);
 
       try {
         const decoded = verifyToken(token);
@@ -52,7 +52,7 @@ export const authenticate = (
       throw new AppError('Требуется токен авторизации', 401);
     }
 
-    const token = authHeader.substring(7); // Убираем 'Bearer '
+    const token = authHeader.substring(7);
 
     try {
       const decoded = verifyToken(token);
@@ -66,7 +66,6 @@ export const authenticate = (
   }
 };
 
-// Middleware для проверки роли
 export const requireRole = (...allowedRoles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -86,10 +85,7 @@ export const requireRole = (...allowedRoles: UserRole[]) => {
   };
 };
 
-// Middleware для проверки, что пользователь - администратор сервиса
 export const requireServiceAdmin = requireRole('service_admin');
-
-// Middleware для проверки, что пользователь - администратор парковки
 export const requireParkingAdmin = requireRole('parking_administrator');
 
 // Middleware для проверки доступа к парковке (для администраторов парковки)
@@ -108,7 +104,6 @@ export const checkParkingAccess = async (
       return next();
     }
 
-    // Для администратора парковки проверяем доступ
     if (req.user.role === 'parking_administrator') {
       const parkingId = req.params.id || req.body.parking_id || req.query.parking_id;
 
@@ -116,7 +111,6 @@ export const checkParkingAccess = async (
         return next(new AppError('Требуется ID парковки', 400));
       }
 
-      // Проверяем, есть ли у пользователя доступ к этой парковке
       const pool = (await import('../config/database')).default;
       const result = await pool.query(
         'SELECT * FROM user_parking WHERE user_id = $1 AND parking_id = $2',

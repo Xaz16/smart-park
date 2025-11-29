@@ -56,7 +56,6 @@ export const createCamera = async (
   next: NextFunction
 ) => {
   try {
-    // Только администратор сервиса может создавать камеры
     if (!req.user || req.user.role !== 'service_admin') {
       throw new AppError('Только суперадминистратор может создавать камеры', 403);
     }
@@ -67,7 +66,6 @@ export const createCamera = async (
       throw new AppError('Название обязательно для заполнения', 400);
     }
 
-    // Для rtsp камер rtsp_url обязателен
     const cameraType = data.camera_type || 'rtsp';
     if (cameraType === 'rtsp' && !data.rtsp_url) {
       throw new AppError('RTSP URL обязателен для RTSP камер', 400);
@@ -90,7 +88,6 @@ export const updateCamera = async (
   next: NextFunction
 ) => {
   try {
-    // Только администратор сервиса может обновлять камеры
     if (!req.user || req.user.role !== 'service_admin') {
       throw new AppError('Только суперадминистратор может обновлять камеры', 403);
     }
@@ -123,7 +120,6 @@ export const deleteCamera = async (
   next: NextFunction
 ) => {
   try {
-    // Только администратор сервиса может удалять камеры
     if (!req.user || req.user.role !== 'service_admin') {
       throw new AppError('Только суперадминистратор может удалять камеры', 403);
     }

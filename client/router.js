@@ -1,4 +1,3 @@
-// Простая система роутинга без фреймворков
 class Router {
     constructor() {
         this.routes = [];
@@ -8,12 +7,10 @@ class Router {
     }
 
     init() {
-        // Обработка навигации через History API
         window.addEventListener('popstate', (e) => {
             this.handleRoute();
         });
 
-        // Обработка кликов по ссылкам
         document.addEventListener('click', (e) => {
             const link = e.target.closest('a[data-route]');
             if (link) {

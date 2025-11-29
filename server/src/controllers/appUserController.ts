@@ -13,7 +13,6 @@ export const getAllAppUsers = async (
   next: NextFunction
 ) => {
   try {
-    // Только администратор сервиса может просматривать пользователей
     if (!req.user || req.user.role !== 'service_admin') {
       throw new AppError('Only service admin can view users', 403);
     }
@@ -34,7 +33,6 @@ export const getAppUserById = async (
   next: NextFunction
 ) => {
   try {
-    // Только администратор сервиса может просматривать пользователей
     if (!req.user || req.user.role !== 'service_admin') {
       throw new AppError('Only service admin can view users', 403);
     }
@@ -61,7 +59,6 @@ export const createAppUser = async (
   next: NextFunction
 ) => {
   try {
-    // Только администратор сервиса может создавать пользователей
     if (!req.user || req.user.role !== 'service_admin') {
       throw new AppError('Только суперадминистратор может создавать пользователей', 403);
     }
@@ -75,7 +72,6 @@ export const createAppUser = async (
       );
     }
 
-    // Хэшируем пароль
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(data.password, saltRounds);
 
@@ -87,7 +83,6 @@ export const createAppUser = async (
     });
   } catch (error: any) {
     if (error.code === '23505') {
-      // Unique constraint violation
       throw new AppError('Пользователь с таким логином уже существует', 409);
     }
     next(error);
@@ -100,7 +95,6 @@ export const updateAppUser = async (
   next: NextFunction
 ) => {
   try {
-    // Только администратор сервиса может обновлять пользователей
     if (!req.user || req.user.role !== 'service_admin') {
       throw new AppError('Только суперадминистратор может обновлять пользователей', 403);
     }
@@ -108,7 +102,6 @@ export const updateAppUser = async (
     const { id } = req.params;
     const updates: UpdateAppUserInput = req.body;
 
-    // Если пароль указан, хэшируем его
     let passwordHash: string | undefined;
     if (updates.password) {
       const saltRounds = 10;
@@ -150,7 +143,6 @@ export const deleteAppUser = async (
   next: NextFunction
 ) => {
   try {
-    // Только администратор сервиса может удалять пользователей
     if (!req.user || req.user.role !== 'service_admin') {
       throw new AppError('Только суперадминистратор может удалять пользователей', 403);
     }

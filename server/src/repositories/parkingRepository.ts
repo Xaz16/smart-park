@@ -3,8 +3,6 @@ import { Parking, CreateParkingInput, UpdateParkingInput } from '../types';
 
 export class ParkingRepository {
   async findAll(userId?: number, userRole?: string): Promise<Parking[]> {
-    // Если пользователь авторизован и является администратором парковки,
-    // показываем только его парковки
     if (userId && userRole === 'parking_administrator') {
       const result = await pool.query(
         `SELECT p.* FROM parking p
@@ -16,7 +14,6 @@ export class ParkingRepository {
       return result.rows;
     }
 
-    // Для всех остальных (включая водителей и администраторов сервиса) - все парковки
     const result = await pool.query(
       'SELECT * FROM parking ORDER BY created_at DESC'
     );

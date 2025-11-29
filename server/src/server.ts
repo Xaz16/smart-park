@@ -12,7 +12,6 @@ pool
   .then(async () => {
     console.log('Database connection established');
     
-    // Проверяем доступность NN сервиса и запускаем сервис камеры
     if (ENABLE_CAMERA_SERVICE) {
       console.log('Checking NN service availability...');
       const isHealthy = await nnService.healthCheck();

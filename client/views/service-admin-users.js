@@ -1,4 +1,3 @@
-// Страница управления пользователями для service_admin
 class ServiceAdminUsersView {
     constructor() {
         this.users = [];
@@ -437,7 +436,6 @@ class ServiceAdminUsersView {
             is_active: isActive
         };
 
-        // Добавляем пароль только если он указан
         if (password) {
             updateData.password = password;
         }

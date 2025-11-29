@@ -17,26 +17,22 @@ export const login = async (
       throw new AppError('Логин и пароль обязательны для заполнения', 400);
     }
 
-    // Находим пользователя
     const user = await appUserRepository.findByUsername(username);
 
     if (!user) {
       throw new AppError('Неверный логин или пароль', 401);
     }
 
-    // Проверяем, активен ли пользователь
     if (!user.is_active) {
       throw new AppError('Учетная запись пользователя отключена', 403);
     }
 
-    // Проверяем пароль
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isPasswordValid) {
       throw new AppError('Неверный логин или пароль', 401);
     }
 
-    // Генерируем JWT токен
     const token = generateToken({
       userId: user.id,
       username: user.username,

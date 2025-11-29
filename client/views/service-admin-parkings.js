@@ -1,4 +1,3 @@
-// Страница управления парковками для суперадмина
 class ServiceAdminParkingsView {
     constructor() {
         this.user = null;
@@ -40,11 +39,9 @@ class ServiceAdminParkingsView {
             </section>
         `;
 
-        // Добавляем модальные окна
         this.renderEditModal();
         this.renderCreateModal();
 
-        // Делаем view доступным глобально
         window.serviceAdminParkingsView = this;
 
         this.init();
@@ -97,13 +94,11 @@ class ServiceAdminParkingsView {
         const modalBody = document.getElementById('createParkingModalBody');
         if (!modal || !modalBody) return;
 
-        // Проверяем авторизацию перед открытием модального окна
         if (!authService.isAuthenticated()) {
             toast.error('Вы не авторизованы. Пожалуйста, войдите в систему.');
             return;
         }
 
-        // Проверяем токен на сервере
         const currentUser = await authService.getCurrentUser();
         if (!currentUser || !authService.isSuperAdmin()) {
             toast.warning('У вас нет прав для создания парковок.');
@@ -117,7 +112,6 @@ class ServiceAdminParkingsView {
         }
 
         try {
-            // Загружаем список пользователей для назначения администраторов
             const users = await this.fetchUsers();
             modalBody.innerHTML = this.renderCreateForm(users);
         } catch (error) {
@@ -126,7 +120,6 @@ class ServiceAdminParkingsView {
             let shouldRelogin = false;
             
             if (error.message.includes('Unauthorized') || error.message.includes('401')) {
-                // Проверяем, действительно ли токен невалиден
                 const currentUser = await authService.getCurrentUser();
                 if (!currentUser) {
                     errorMessage = 'Ошибка авторизации. Пожалуйста, войдите в систему заново.';
@@ -381,12 +374,10 @@ class ServiceAdminParkingsView {
 
         list.innerHTML = this.parkingData.map(parking => this.createParkingCard(parking)).join('');
         
-        // Добавляем обработчики кликов (только для перехода на страницу парковки, не для кнопок)
         this.parkingData.forEach(parking => {
             const card = document.getElementById(`parking-card-${parking.id}`);
             if (card) {
                 card.addEventListener('click', (e) => {
-                    // Не переходим, если клик был на кнопку или ссылку
                     if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.closest('button') || e.target.closest('a')) {
                         return;
                     }
@@ -515,13 +506,11 @@ class ServiceAdminParkingsView {
         const modalBody = document.getElementById('editParkingModalBody');
         if (!modal || !modalBody) return;
 
-        // Проверяем авторизацию перед открытием модального окна
         if (!authService.isAuthenticated()) {
             toast.error('Вы не авторизованы. Пожалуйста, войдите в систему.');
             return;
         }
 
-        // Проверяем токен на сервере
         const currentUser = await authService.getCurrentUser();
         if (!currentUser || !authService.isSuperAdmin()) {
             toast.warning('У вас нет прав для редактирования парковок.');
@@ -535,7 +524,6 @@ class ServiceAdminParkingsView {
         }
 
         try {
-            // Загружаем данные параллельно
             const [parking, users, parkingAdmins, cameras, parkingCameras, allParkingCameras] = await Promise.all([
                 this.fetchParkingDetails(parkingId),
                 this.fetchUsers(),
@@ -552,7 +540,6 @@ class ServiceAdminParkingsView {
             let shouldRelogin = false;
             
             if (error.message.includes('Unauthorized') || error.message.includes('401')) {
-                // Проверяем, действительно ли токен невалиден
                 const currentUser = await authService.getCurrentUser();
                 if (!currentUser) {
                     errorMessage = 'Ошибка авторизации. Пожалуйста, войдите в систему заново.';
@@ -645,7 +632,6 @@ class ServiceAdminParkingsView {
 
         const result = await response.json();
         if (result.status === 'success' && Array.isArray(result.data)) {
-            // Фильтруем только администраторов парковок
             return result.data.filter(user => user.role === 'parking_administrator');
         }
         return [];
@@ -704,7 +690,6 @@ class ServiceAdminParkingsView {
 
         const result = await response.json();
         if (result.status === 'success' && Array.isArray(result.data)) {
-            // Возвращаем массив ID камер, нормализуя их в числа
             return result.data.map(pc => +pc.camera_id).filter(id => !isNaN(id));
         }
         return [];
@@ -724,7 +709,6 @@ class ServiceAdminParkingsView {
 
         const result = await response.json();
         if (result.status === 'success' && Array.isArray(result.data)) {
-            // Возвращаем все связи для определения занятых камер
             return result.data;
         }
         return [];
@@ -732,32 +716,24 @@ class ServiceAdminParkingsView {
 
     renderEditForm(parking, users, parkingAdmins, cameras, parkingCameras, allParkingCameras) {
         const assignedAdminIds = new Set(parkingAdmins);
-        // Нормализуем ID для корректного сравнения
         const assignedCameraIds = new Set(parkingCameras.map(id => +id));
         const parkingId = +parking.id;
         
-        // Определяем занятые камеры (привязанные к другим парковкам)
         const occupiedCameraIds = new Set();
         allParkingCameras.forEach(pc => {
-            // Нормализуем ID для корректного сравнения
             const pcParkingId = +pc.parking_id;
             const pcCameraId = +pc.camera_id;
             
-            // Если камера привязана к другой парковке (не к текущей), она занята
             if (pcParkingId !== parkingId) {
                 occupiedCameraIds.add(pcCameraId);
             }
         });
         
-        // Фильтруем камеры: показываем только свободные или уже привязанные к этой парковке
         const availableCameras = cameras.filter(camera => {
             const cameraId = +camera.id;
-            // Показываем камеру, если она:
-            // 1. Уже привязана к текущей парковке (всегда показываем привязанные)
             if (assignedCameraIds.has(cameraId)) {
                 return true;
             }
-            // 2. Не занята другой парковкой (свободные камеры)
             return !occupiedCameraIds.has(cameraId);
         });
         
@@ -919,12 +895,9 @@ class ServiceAdminParkingsView {
     }
 
     async updateParkingCameras(parkingId) {
-        // Получаем текущие привязки камер
         const currentCameras = await this.fetchParkingCameras(parkingId);
-        // Нормализуем ID для корректного сравнения
         const currentCameraIds = new Set(currentCameras.map(id => +id));
 
-        // Получаем выбранные камеры из формы
         const selectedCheckboxes = document.querySelectorAll('.camera-checkbox:checked');
         const selectedCameraIds = new Set();
         selectedCheckboxes.forEach(checkbox => {
@@ -934,7 +907,6 @@ class ServiceAdminParkingsView {
             }
         });
 
-        // Определяем, какие камеры нужно добавить, а какие удалить
         const camerasToAdd = [];
         const camerasToRemove = [];
 
@@ -961,7 +933,6 @@ class ServiceAdminParkingsView {
         const API_HOST = getAPIHost();
         const headers = authService.getAuthHeaders();
 
-        // Удаляем камеры, которые были отвязаны
         for (const cameraId of camerasToRemove) {
             try {
                 const response = await fetch(`${API_HOST}/api/parking-cameras/relation/remove`, {
@@ -982,7 +953,6 @@ class ServiceAdminParkingsView {
             }
         }
 
-        // Добавляем новые камеры
         for (const cameraId of camerasToAdd) {
             try {
                 const response = await fetch(`${API_HOST}/api/parking-cameras`, {
@@ -1007,11 +977,7 @@ class ServiceAdminParkingsView {
         }
     }
 
-    // Метод toggleCamera больше не используется - привязка камер происходит при сохранении формы
-    // Оставлен для обратной совместимости, но не выполняет никаких действий
     async toggleCamera(parkingId, cameraId, assign) {
-        // Этот метод больше не используется
-        // Привязка камер теперь происходит только при нажатии "Сохранить"
         console.warn('toggleCamera is deprecated. Camera binding now happens on form save.');
     }
 
@@ -1026,29 +992,22 @@ class ServiceAdminParkingsView {
             const camerasList = document.getElementById('parkingCamerasList');
             if (camerasList) {
                 const parkingIdNum = +parkingId;
-                // Нормализуем ID для корректного сравнения
                 const assignedCameraIds = new Set(parkingCameras.map(id => +id));
                 
-                // Определяем занятые камеры (привязанные к другим парковкам)
                 const occupiedCameraIds = new Set();
                 allParkingCameras.forEach(pc => {
                     const pcParkingId = +pc.parking_id;
                     const pcCameraId = +pc.camera_id;
-                    // Если камера привязана к другой парковке (не к текущей), она занята
                     if (pcParkingId !== parkingIdNum) {
                         occupiedCameraIds.add(pcCameraId);
                     }
                 });
                 
-                // Фильтруем камеры: показываем только свободные или уже привязанные к этой парковке
                 const availableCameras = cameras.filter(camera => {
                     const cameraId = +camera.id;
-                    // Показываем камеру, если она:
-                    // 1. Уже привязана к текущей парковке (всегда показываем привязанные)
                     if (assignedCameraIds.has(cameraId)) {
                         return true;
                     }
-                    // 2. Не занята другой парковкой (свободные камеры)
                     return !occupiedCameraIds.has(cameraId);
                 });
                 
@@ -1132,7 +1091,6 @@ class ServiceAdminParkingsView {
     }
 
     destroy() {
-        // Удаляем модальные окна при уничтожении view
         const editModal = document.getElementById('editParkingModal');
         if (editModal) {
             editModal.remove();

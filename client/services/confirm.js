@@ -1,4 +1,3 @@
-// Confirm dialog service
 class ConfirmService {
     constructor() {
         this.container = null;
@@ -6,7 +5,6 @@ class ConfirmService {
     }
 
     init() {
-        // Создаем контейнер для confirm диалогов
         if (!document.getElementById('confirm-container')) {
             this.container = document.createElement('div');
             this.container.id = 'confirm-container';

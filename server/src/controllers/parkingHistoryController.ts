@@ -15,7 +15,6 @@ export const getAllParkingHistory = async (
     const userId = req.user?.userId;
     const userRole = req.user?.role;
 
-    // Если указан parking_id и пользователь - администратор парковки, проверяем доступ
     if (parkingId && req.user && req.user.role === 'parking_administrator') {
       await checkParkingAccessFromRequest(req, parkingId);
     }
@@ -79,7 +78,6 @@ export const createParkingHistory = async (
       throw new AppError('spots_state must be an array', 400);
     }
 
-    // Проверяем доступ к парковке
     await checkParkingAccessFromRequest(req, data.parking_id);
 
     const history = await parkingHistoryRepository.create(data);

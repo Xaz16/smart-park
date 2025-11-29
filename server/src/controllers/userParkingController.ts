@@ -51,7 +51,6 @@ export const createUserParking = async (
   next: NextFunction
 ) => {
   try {
-    // Только администратор сервиса может создавать связи
     if (!req.user || req.user.role !== 'service_admin') {
       throw new AppError('Only service admin can manage user-parking relationships', 403);
     }
@@ -70,11 +69,9 @@ export const createUserParking = async (
     });
   } catch (error: any) {
     if (error.code === '23505') {
-      // Unique constraint violation
       throw new AppError('This user-parking relationship already exists', 409);
     }
     if (error.code === '23503') {
-      // Foreign key constraint violation
       throw new AppError('User or parking not found', 404);
     }
     next(error);

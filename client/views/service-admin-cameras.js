@@ -1,4 +1,3 @@
-// Страница управления камерами для service_admin
 class ServiceAdminCamerasView {
     constructor() {
         this.cameras = [];
@@ -250,7 +249,6 @@ class ServiceAdminCamerasView {
             } else {
                 rtspUrlContainer.style.display = 'none';
                 rtspUrlInput.required = false;
-                // Не очищаем значение при редактировании, только при создании
                 if (rtspUrlInput.id === 'newCameraRtspUrl') {
                     rtspUrlInput.value = '';
                 }

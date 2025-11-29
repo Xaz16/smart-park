@@ -54,7 +54,6 @@ export const createParkingCamera = async (
   next: NextFunction
 ) => {
   try {
-    // Только администратор сервиса может создавать связи
     if (!req.user || req.user.role !== 'service_admin') {
       throw new AppError('Только суперадминистратор может управлять связями парковок с камерами', 403);
     }
@@ -76,14 +75,12 @@ export const createParkingCamera = async (
     });
   } catch (error: any) {
     if (error.code === '23505') {
-      // Unique constraint violation
       throw new AppError(
         'Связь между этой парковкой и камерой уже существует',
         409
       );
     }
     if (error.code === '23503') {
-      // Foreign key constraint violation
       throw new AppError('Парковка или камера не найдены', 404);
     }
     next(error);
@@ -96,7 +93,6 @@ export const deleteParkingCamera = async (
   next: NextFunction
 ) => {
   try {
-    // Только администратор сервиса может удалять связи
     if (!req.user || req.user.role !== 'service_admin') {
       throw new AppError('Только суперадминистратор может управлять связями парковок с камерами', 403);
     }
@@ -120,7 +116,6 @@ export const deleteParkingCameraByRelation = async (
   next: NextFunction
 ) => {
   try {
-    // Только администратор сервиса может удалять связи
     if (!req.user || req.user.role !== 'service_admin') {
       throw new AppError('Только суперадминистратор может управлять связями парковок с камерами', 403);
     }

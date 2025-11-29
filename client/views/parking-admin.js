@@ -1,4 +1,3 @@
-// Страница администратора парковки (parking_administrator)
 class ParkingAdminView {
     constructor() {
         this.user = null;

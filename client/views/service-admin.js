@@ -1,4 +1,3 @@
-// Страница суперадминистратора (service_admin)
 class ServiceAdminView {
     constructor() {
         this.user = null;

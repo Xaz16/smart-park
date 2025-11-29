@@ -1,15 +1,8 @@
-// Главный файл приложения с роутингом
-// Константы теперь в constants.js
-
-// Убеждаемся, что authService доступен глобально
 if (typeof authService === 'undefined') {
     console.error('authService не загружен! Убедитесь, что services/auth.js подключен перед main.js');
 }
 
-// Текущий активный view
 let currentView = null;
-
-// Глобальные функции для UI
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
@@ -37,7 +30,6 @@ function openAuthModal() {
         authModal.classList.add('active');
         overlay.classList.add('active');
 
-        // Сбрасываем состояние поля пароля при открытии модального окна
         const passwordInput = document.getElementById('authPassword');
         const passwordToggle = document.getElementById('passwordToggle');
         if (passwordInput && passwordToggle) {
@@ -57,10 +49,7 @@ function closeAuthModal() {
     }
 }
 
-// Глобальное хранилище данных парковок для сайдбара
 let globalParkingData = [];
-
-// Функция для обновления списка парковок в сайдбаре
 function updateGlobalParkingList(parkingData) {
     globalParkingData = parkingData;
     const list = document.getElementById('parkingList');
@@ -89,7 +78,6 @@ function updateGlobalParkingList(parkingData) {
     });
 }
 
-// Функция для переключения видимости пароля
 function togglePasswordVisibility() {
     const passwordInput = document.getElementById('authPassword');
     const passwordToggle = document.getElementById('passwordToggle');
@@ -107,7 +95,6 @@ function togglePasswordVisibility() {
     }
 }
 
-// Экспортируем функции в глобальный объект для доступа из views
 window.app = {
     API_HOST: APP_CONFIG.API_HOST,
     POLLING_INTERVAL: APP_CONFIG.POLLING_INTERVAL,
@@ -120,11 +107,7 @@ window.app = {
     getGlobalParkingData: () => globalParkingData
 };
 
-// Инициализация роутера после загрузки DOM
 document.addEventListener('DOMContentLoaded', () => {
-    // Регистрируем маршруты (важно: более специфичные маршруты должны быть зарегистрированы первыми)
-
-    // Страница деталей парковки
     router.route('/parking/:id', (params) => {
         if (currentView && currentView.destroy) {
             currentView.destroy();
@@ -133,7 +116,6 @@ document.addEventListener('DOMContentLoaded', () => {
         currentView.render(params);
     });
 
-    // Главная страница
     router.route('/', (params) => {
         if (currentView && currentView.destroy) {
             currentView.destroy();
@@ -142,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
         currentView.render();
     });
 
-    // Обработка кликов по overlay
     const overlay = document.getElementById('overlay');
     if (overlay) {
         overlay.addEventListener('click', () => {
@@ -154,7 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Обработка формы авторизации
     const authForm = document.getElementById('authForm');
     if (authForm) {
         authForm.addEventListener('submit', async (e) => {
@@ -210,7 +190,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Обновление статуса авторизации в header
     function updateHeaderAuthStatus() {
         const user = authService.getUser();
         const authIcon = document.getElementById('authIcon');
@@ -247,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Перенаправление в зависимости от роли
     function redirectByRole(role) {
         if (role === 'service_admin') {
             router.navigate('/service-admin');
@@ -275,7 +253,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // Функция для проверки авторизации суперадмина
     async function requireSuperAdmin() {
         if (window.app) {
             window.app.toggleLoader(true);
@@ -311,8 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Регистрируем защищенные маршруты для суперадмина
-    // Подмаршруты должны быть зарегистрированы ПЕРЕД основным маршрутом
     router.route('/service-admin/parkings', async (params) => {
         const user = await requireSuperAdmin();
         if (!user) return;
@@ -375,7 +350,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Проверяем токен на сервере перед отображением
             const user = await authService.getCurrentUser();
 
             if (!user || !authService.isParkingAdmin()) {
@@ -409,7 +383,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Обработка выхода
     window.logout = async function () {
         const confirmed = await confirmDialog.show('Вы уверены, что хотите выйти?', {
             title: 'Выход из системы',
@@ -424,15 +397,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Слушаем изменения авторизации
     window.addEventListener('auth-changed', () => {
         updateHeaderAuthStatus();
     });
 
-    // Проверяем авторизацию при загрузке
     authService.getCurrentUser().then((user) => {
         updateHeaderAuthStatus();
-        // Если пользователь был авторизован, но токен невалиден, перенаправляем на главную
         if (!user && authService.isAuthenticated()) {
             console.warn('Token is invalid, redirecting to home');
             router.navigate('/');
@@ -442,10 +412,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateHeaderAuthStatus();
     });
 
-    // Обработка выхода через контекстное меню (правый клик) или через кнопку в админке
-    // Основной клик теперь перенаправляет в админку (обрабатывается в updateHeaderAuthStatus)
-
-    // Запускаем роутер после регистрации всех маршрутов
     router.start();
     updateHeaderAuthStatus();
 });

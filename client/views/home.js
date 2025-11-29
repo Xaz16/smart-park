@@ -1,4 +1,3 @@
-// Главная страница - список парковок
 class HomeView {
     constructor() {
         this.parkingData = [];

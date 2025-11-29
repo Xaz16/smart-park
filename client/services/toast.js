@@ -1,4 +1,3 @@
-// Toast notification service
 class ToastService {
     constructor() {
         this.container = null;
@@ -6,7 +5,6 @@ class ToastService {
     }
 
     init() {
-        // Создаем контейнер для toast уведомлений
         if (!document.getElementById('toast-container')) {
             this.container = document.createElement('div');
             this.container.id = 'toast-container';

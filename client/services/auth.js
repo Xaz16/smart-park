@@ -1,24 +1,18 @@
-// Сервис для работы с авторизацией
 class AuthService {
     constructor() {
         this.tokenKey = 'smart_park_token';
         this.userKey = 'smart_park_user';
     }
 
-    // Получить API_HOST (динамически из window.app или константы)
     getAPIHost() {
-        // Используем глобальную функцию getAPIHost из constants.js, если доступна
         if (typeof window.getAPIHost === 'function') {
             return window.getAPIHost();
         }
         if (window.app && window.app.API_HOST) {
             return window.app.API_HOST;
         }
-        // Используем константу из constants.js
         return typeof APP_CONFIG !== 'undefined' ? APP_CONFIG.API_HOST : 'https://smartparkistu.ru';
     }
-
-    // Сохранить токен и данные пользователя
     setAuth(token, user) {
         if (!token || !user) {
             console.error('setAuth: token or user is missing', { token, user });
@@ -34,7 +28,6 @@ class AuthService {
         }
     }
 
-    // Получить токен
     getToken() {
         const token = localStorage.getItem(this.tokenKey);
         if (!token) {
@@ -43,7 +36,6 @@ class AuthService {
         return token;
     }
 
-    // Получить данные пользователя
     getUser() {
         const userStr = localStorage.getItem(this.userKey);
         return userStr ? JSON.parse(userStr) : null;
@@ -60,17 +52,14 @@ class AuthService {
         return user && user.role === role;
     }
 
-    // Проверить, является ли пользователь суперадмином
     isSuperAdmin() {
         return this.hasRole('service_admin');
     }
 
-    // Проверить, является ли пользователь администратором парковки
     isParkingAdmin() {
         return this.hasRole('parking_administrator');
     }
 
-    // Вход в систему
     async login(username, password) {
         try {
             const API_HOST = this.getAPIHost();
@@ -89,7 +78,6 @@ class AuthService {
                 console.log('Login successful, saving token...', { hasToken: !!token, username: user.username });
                 this.setAuth(token, user);
 
-                // Проверяем, что токен действительно сохранился
                 const savedToken = this.getToken();
                 if (!savedToken) {
                     console.error('Token was not saved properly!');
@@ -115,7 +103,6 @@ class AuthService {
         }
     }
 
-    // Получить текущего пользователя с сервера
     async getCurrentUser() {
         const token = this.getToken();
         if (!token) {
@@ -167,14 +154,12 @@ class AuthService {
         }
     }
 
-    // Выход из системы
     logout() {
         localStorage.removeItem(this.tokenKey);
         localStorage.removeItem(this.userKey);
         window.dispatchEvent(new CustomEvent('auth-changed', { detail: { user: null, isAuthenticated: false } }));
     }
 
-    // Получить заголовки для авторизованных запросов
     getAuthHeaders() {
         const token = this.getToken();
         const headers = {

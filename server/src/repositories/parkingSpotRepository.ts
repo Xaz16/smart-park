@@ -11,9 +11,7 @@ export class ParkingSpotRepository {
     userId?: number,
     userRole?: string
   ): Promise<ParkingSpot[]> {
-    // Если пользователь авторизован и является администратором парковки
     if (userId && userRole === 'parking_administrator') {
-      // Если указан parking_id, возвращаем места для этой парковки
       if (parkingId) {
         const result = await pool.query(
           'SELECT * FROM parking_spot WHERE parking_id = $1 ORDER BY spot_number',
@@ -22,7 +20,6 @@ export class ParkingSpotRepository {
         return result.rows;
       }
 
-      // Если parking_id не указан, показываем места только своих парковок
       const result = await pool.query(
         `SELECT ps.* FROM parking_spot ps
          INNER JOIN user_parking up ON ps.parking_id = up.parking_id
@@ -33,7 +30,6 @@ export class ParkingSpotRepository {
       return result.rows;
     }
 
-    // Для всех остальных (включая водителей и администраторов сервиса)
     let query = 'SELECT * FROM parking_spot';
     const params: any[] = [];
 
