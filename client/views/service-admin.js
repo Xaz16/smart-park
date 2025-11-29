@@ -29,7 +29,7 @@ class ServiceAdminView {
                     <p>Создание, редактирование и удаление парковок</p>
                 </div>
                 
-                <div class="admin-card" onclick="toast.info('Функционал в разработке')">
+                <div class="admin-card" onclick="router.navigate('/service-admin/users')">
                     <div class="admin-card-icon">👥</div>
                     <h3>Управление пользователями</h3>
                     <p>Создание и управление пользователями системы</p>

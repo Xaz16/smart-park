@@ -296,6 +296,17 @@ document.addEventListener('DOMContentLoaded', () => {
         currentView.render(params);
     });
 
+    router.route('/service-admin/users', async (params) => {
+        const user = await requireSuperAdmin();
+        if (!user) return;
+
+        if (currentView && currentView.destroy) {
+            currentView.destroy();
+        }
+        currentView = new ServiceAdminUsersView();
+        currentView.render(params);
+    });
+
     router.route('/service-admin/:path', async (params) => {
         const user = await requireSuperAdmin();
         if (!user) return;
