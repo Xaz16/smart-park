@@ -26,7 +26,7 @@ class ServiceAdminParkingsView {
             <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 2rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <p style="color: #666; margin: 0;">Всего парковок: <strong id="totalParkings">—</strong></p>
-                    <button onclick="alert('Функционал создания парковки в разработке')" style="padding: 0.5rem 1rem; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    <button onclick="window.serviceAdminParkingsView.openCreateModal()" style="padding: 0.5rem 1rem; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer;">
                         + Создать парковку
                     </button>
                 </div>
@@ -40,7 +40,277 @@ class ServiceAdminParkingsView {
             </section>
         `;
 
+        // Добавляем модальные окна
+        this.renderEditModal();
+        this.renderCreateModal();
+
+        // Делаем view доступным глобально
+        window.serviceAdminParkingsView = this;
+
         this.init();
+    }
+
+    renderEditModal() {
+        const body = document.body;
+        if (document.getElementById('editParkingModal')) return; // Уже существует
+        
+        const modalHTML = `
+            <div class="edit-parking-modal" id="editParkingModal" style="display: none;">
+                <div class="edit-parking-modal-content">
+                    <div class="edit-parking-modal-header">
+                        <h2>Редактирование парковки</h2>
+                        <button onclick="window.serviceAdminParkingsView.closeEditModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;">×</button>
+                    </div>
+                    <div class="edit-parking-modal-body" id="editParkingModalBody">
+                        <!-- Контент будет загружен динамически -->
+                    </div>
+                </div>
+                <div class="edit-parking-modal-overlay" onclick="window.serviceAdminParkingsView.closeEditModal()"></div>
+            </div>
+        `;
+        body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    renderCreateModal() {
+        const body = document.body;
+        if (document.getElementById('createParkingModal')) return; // Уже существует
+        
+        const modalHTML = `
+            <div class="edit-parking-modal" id="createParkingModal" style="display: none;">
+                <div class="edit-parking-modal-content">
+                    <div class="edit-parking-modal-header">
+                        <h2>Создание парковки</h2>
+                        <button onclick="window.serviceAdminParkingsView.closeCreateModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;">×</button>
+                    </div>
+                    <div class="edit-parking-modal-body" id="createParkingModalBody">
+                        <!-- Контент будет загружен динамически -->
+                    </div>
+                </div>
+                <div class="edit-parking-modal-overlay" onclick="window.serviceAdminParkingsView.closeCreateModal()"></div>
+            </div>
+        `;
+        body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    async openCreateModal() {
+        const modal = document.getElementById('createParkingModal');
+        const modalBody = document.getElementById('createParkingModalBody');
+        if (!modal || !modalBody) return;
+
+        // Проверяем авторизацию перед открытием модального окна
+        if (!authService.isAuthenticated()) {
+            toast.error('Вы не авторизованы. Пожалуйста, войдите в систему.');
+            return;
+        }
+
+        // Проверяем токен на сервере
+        const currentUser = await authService.getCurrentUser();
+        if (!currentUser || !authService.isSuperAdmin()) {
+            toast.warning('У вас нет прав для создания парковок.');
+            return;
+        }
+
+        modal.style.display = 'flex';
+        
+        if (window.app) {
+            window.app.toggleLoader(true);
+        }
+
+        try {
+            // Загружаем список пользователей для назначения администраторов
+            const users = await this.fetchUsers();
+            modalBody.innerHTML = this.renderCreateForm(users);
+        } catch (error) {
+            console.error('Failed to load users:', error);
+            let errorMessage = 'Ошибка загрузки данных';
+            let shouldRelogin = false;
+            
+            if (error.message.includes('Unauthorized') || error.message.includes('401')) {
+                // Проверяем, действительно ли токен невалиден
+                const currentUser = await authService.getCurrentUser();
+                if (!currentUser) {
+                    errorMessage = 'Ошибка авторизации. Пожалуйста, войдите в систему заново.';
+                    shouldRelogin = true;
+                } else {
+                    errorMessage = 'Ошибка доступа. Убедитесь, что у вас есть права суперадминистратора.';
+                }
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            modalBody.innerHTML = `
+                <div style="padding: 2rem; text-align: center;">
+                    <p style="color: #e74c3c;">${errorMessage}</p>
+                    ${shouldRelogin ? '<p style="color: #666; margin-top: 0.5rem; font-size: 0.9rem;">Токен истек или недействителен</p>' : ''}
+                    <button onclick="window.serviceAdminParkingsView.closeCreateModal()${shouldRelogin ? '; window.app.openAuthModal()' : ''}" 
+                            style="margin-top: 1rem; padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Закрыть
+                    </button>
+                </div>
+            `;
+        } finally {
+            if (window.app) {
+                window.app.toggleLoader(false);
+            }
+        }
+    }
+
+    closeCreateModal() {
+        const modal = document.getElementById('createParkingModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    renderCreateForm(users) {
+        return `
+            <form id="createParkingForm" onsubmit="event.preventDefault(); window.serviceAdminParkingsView.createParking()">
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #2c3e50;">Название парковки *</label>
+                    <input type="text" id="newParkingName" required 
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #2c3e50;">Адрес *</label>
+                    <input type="text" id="newParkingAddress" required 
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #2c3e50;">Широта</label>
+                        <input type="number" step="any" id="newParkingLatitude" 
+                               style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #2c3e50;">Долгота</label>
+                        <input type="number" step="any" id="newParkingLongitude" 
+                               style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #2c3e50;">Всего мест</label>
+                    <input type="number" id="newParkingTotalSpots" value="0" min="0" 
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="newParkingIsActive" checked 
+                               style="width: 20px; height: 20px; cursor: pointer;">
+                        <span style="font-weight: bold; color: #2c3e50;">Парковка активна</span>
+                    </label>
+                </div>
+
+                <div style="margin-bottom: 1.5rem; padding-top: 1.5rem; border-top: 2px solid #eee;">
+                    <label style="display: block; margin-bottom: 1rem; font-weight: bold; color: #2c3e50;">Администраторы парковки</label>
+                    <div id="newParkingAdminsList" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 1rem;">
+                        ${users.length === 0 
+                            ? '<p style="color: #999; text-align: center;">Нет доступных администраторов</p>'
+                            : users.map(user => `
+                                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem;">
+                                    <input type="checkbox" value="${user.id}" 
+                                           style="width: 18px; height: 18px; cursor: pointer;">
+                                    <span>${user.username} (ID: ${user.id})</span>
+                                </label>
+                            `).join('')
+                        }
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid #eee;">
+                    <button type="button" onclick="window.serviceAdminParkingsView.closeCreateModal()" 
+                            style="padding: 0.75rem 1.5rem; background: #95a5a6; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem;">
+                        Отмена
+                    </button>
+                    <button type="submit" 
+                            style="padding: 0.75rem 1.5rem; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; font-weight: bold;">
+                        Создать
+                    </button>
+                </div>
+            </form>
+        `;
+    }
+
+    async createParking() {
+        const name = document.getElementById('newParkingName').value;
+        const address = document.getElementById('newParkingAddress').value;
+        const latitude = document.getElementById('newParkingLatitude').value;
+        const longitude = document.getElementById('newParkingLongitude').value;
+        const totalSpots = document.getElementById('newParkingTotalSpots').value;
+        const isActive = document.getElementById('newParkingIsActive').checked;
+
+        // Получаем выбранных администраторов
+        const selectedAdmins = Array.from(document.querySelectorAll('#newParkingAdminsList input[type="checkbox"]:checked'))
+            .map(cb => parseInt(cb.value));
+
+        const createData = {
+            name: name.trim(),
+            address: address.trim(),
+            is_active: isActive
+        };
+
+        if (latitude) createData.latitude = parseFloat(latitude);
+        if (longitude) createData.longitude = parseFloat(longitude);
+        if (totalSpots) createData.total_spots = parseInt(totalSpots);
+
+        const API_HOST = getAPIHost();
+        const headers = authService.getAuthHeaders();
+
+        if (window.app) {
+            window.app.toggleLoader(true);
+        }
+
+        try {
+            // Создаем парковку
+            const response = await fetch(`${API_HOST}/api/parkings`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(createData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Ошибка создания парковки');
+            }
+
+            const result = await response.json();
+            if (result.status === 'success') {
+                const newParkingId = result.data.id;
+
+                // Назначаем администраторов
+                if (selectedAdmins.length > 0) {
+                    await Promise.all(selectedAdmins.map(userId => 
+                        fetch(`${API_HOST}/api/user-parkings`, {
+                            method: 'POST',
+                            headers: headers,
+                            body: JSON.stringify({
+                                user_id: userId,
+                                parking_id: newParkingId
+                            })
+                        }).then(res => {
+                            if (!res.ok) {
+                                console.warn(`Failed to assign admin ${userId} to parking ${newParkingId}`);
+                            }
+                        })
+                    ));
+                }
+
+                toast.success('Парковка успешно создана!');
+                this.closeCreateModal();
+                // Обновляем список парковок
+                await this.fetchParkings();
+            }
+        } catch (error) {
+            console.error('Failed to create parking:', error);
+            toast.error('Ошибка: ' + error.message);
+        } finally {
+            if (window.app) {
+                window.app.toggleLoader(false);
+            }
+        }
     }
 
     init() {
@@ -48,7 +318,7 @@ class ServiceAdminParkingsView {
     }
 
     async fetchParkings() {
-        const API_HOST = window.app?.API_HOST || 'http://localhost:3000';
+        const API_HOST = getAPIHost();
         const headers = authService.getAuthHeaders();
         
         if (window.app) {
@@ -111,11 +381,15 @@ class ServiceAdminParkingsView {
 
         list.innerHTML = this.parkingData.map(parking => this.createParkingCard(parking)).join('');
         
-        // Добавляем обработчики кликов
+        // Добавляем обработчики кликов (только для перехода на страницу парковки, не для кнопок)
         this.parkingData.forEach(parking => {
             const card = document.getElementById(`parking-card-${parking.id}`);
             if (card) {
-                card.addEventListener('click', () => {
+                card.addEventListener('click', (e) => {
+                    // Не переходим, если клик был на кнопку или ссылку
+                    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.closest('button') || e.target.closest('a')) {
+                        return;
+                    }
                     router.navigate(`/parking/${parking.id}`);
                 });
             }
@@ -177,8 +451,11 @@ class ServiceAdminParkingsView {
                         : '<div class="parking-card-occupancy" style="color: #999;">Данные анализа недоступны</div>'
                     }
                 </div>
-                <div class="parking-card-footer">
-                    <span class="view-details">Подробнее →</span>
+                <div class="parking-card-footer" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="view-details" onclick="event.stopPropagation(); router.navigate('/parking/${parking.id}')">Подробнее →</span>
+                    <button onclick="event.stopPropagation(); window.serviceAdminParkingsView.openEditModal(${parking.id})" style="padding: 0.4rem 0.8rem; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.85rem;">
+                        ✏️ Редактировать
+                    </button>
                 </div>
             </div>
         `;
@@ -201,7 +478,9 @@ class ServiceAdminParkingsView {
 
         return {
             title: parking.name || 'Парковка',
+            name: parking.name || 'Парковка',
             totalSpaces: totalSpots,
+            total_spots: parking.total_spots,
             freeSpaces: freeSpots,
             occupiedSpaces: occupiedSpots,
             spotsState: spotsState,
@@ -209,6 +488,7 @@ class ServiceAdminParkingsView {
             address: parking.address || '—',
             id: parking.id || '—',
             isActive: parking.is_active,
+            is_active: parking.is_active,
             latitude: parking.latitude || '—',
             longitude: parking.longitude || '—',
             createdAt: parking.created_at || parking.createdAt || null,
@@ -223,15 +503,568 @@ class ServiceAdminParkingsView {
         if (!imagePath || typeof imagePath !== 'string') {
             return null;
         }
-        const API_HOST = window.app?.API_HOST || 'http://localhost:3000';
+        const API_HOST = getAPIHost();
         if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
             return imagePath;
         }
         return `${API_HOST}${imagePath}`;
     }
 
+    async openEditModal(parkingId) {
+        const modal = document.getElementById('editParkingModal');
+        const modalBody = document.getElementById('editParkingModalBody');
+        if (!modal || !modalBody) return;
+
+        // Проверяем авторизацию перед открытием модального окна
+        if (!authService.isAuthenticated()) {
+            toast.error('Вы не авторизованы. Пожалуйста, войдите в систему.');
+            return;
+        }
+
+        // Проверяем токен на сервере
+        const currentUser = await authService.getCurrentUser();
+        if (!currentUser || !authService.isSuperAdmin()) {
+            toast.warning('У вас нет прав для редактирования парковок.');
+            return;
+        }
+
+        modal.style.display = 'flex';
+        
+        if (window.app) {
+            window.app.toggleLoader(true);
+        }
+
+        try {
+            // Загружаем данные параллельно
+            const [parking, users, parkingAdmins, cameras, parkingCameras, allParkingCameras] = await Promise.all([
+                this.fetchParkingDetails(parkingId),
+                this.fetchUsers(),
+                this.fetchParkingAdmins(parkingId),
+                this.fetchCameras(),
+                this.fetchParkingCameras(parkingId),
+                this.fetchAllParkingCameras() // Получаем все связи для определения занятых камер
+            ]);
+
+            modalBody.innerHTML = this.renderEditForm(parking, users, parkingAdmins, cameras, parkingCameras, allParkingCameras);
+        } catch (error) {
+            console.error('Failed to load parking data:', error);
+            let errorMessage = 'Ошибка загрузки данных парковки';
+            let shouldRelogin = false;
+            
+            if (error.message.includes('Unauthorized') || error.message.includes('401')) {
+                // Проверяем, действительно ли токен невалиден
+                const currentUser = await authService.getCurrentUser();
+                if (!currentUser) {
+                    errorMessage = 'Ошибка авторизации. Пожалуйста, войдите в систему заново.';
+                    shouldRelogin = true;
+                } else {
+                    errorMessage = 'Ошибка доступа. Убедитесь, что у вас есть права суперадминистратора.';
+                }
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            modalBody.innerHTML = `
+                <div style="padding: 2rem; text-align: center;">
+                    <p style="color: #e74c3c;">${errorMessage}</p>
+                    ${shouldRelogin ? '<p style="color: #666; margin-top: 0.5rem; font-size: 0.9rem;">Токен истек или недействителен</p>' : ''}
+                    <button onclick="window.serviceAdminParkingsView.closeEditModal()${shouldRelogin ? '; window.app.openAuthModal()' : ''}" 
+                            style="margin-top: 1rem; padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Закрыть
+                    </button>
+                </div>
+            `;
+        } finally {
+            if (window.app) {
+                window.app.toggleLoader(false);
+            }
+        }
+    }
+
+    closeEditModal() {
+        const modal = document.getElementById('editParkingModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    async fetchParkingDetails(parkingId) {
+        const API_HOST = getAPIHost();
+        const headers = authService.getAuthHeaders();
+        
+        const response = await fetch(`${API_HOST}/api/parkings/${parkingId}`, {
+            headers: headers
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.status === 'success' && result.data) {
+            const parking = result.data;
+            // Убеждаемся, что is_active правильно обработан
+            if (parking.is_active === undefined && parking.isActive !== undefined) {
+                parking.is_active = parking.isActive;
+            }
+            // Преобразуем boolean значения из строк, если нужно
+            if (typeof parking.is_active === 'string') {
+                parking.is_active = parking.is_active === 'true' || parking.is_active === '1';
+            }
+            // Если значение null или undefined, устанавливаем false
+            if (parking.is_active === null || parking.is_active === undefined) {
+                parking.is_active = false;
+            }
+            return parking;
+        }
+        throw new Error('Unexpected response');
+    }
+
+    async fetchUsers() {
+        // Используем тот же API_HOST, что и authService
+        const API_HOST = getAPIHost();
+        const headers = authService.getAuthHeaders();
+        
+        console.log('fetchUsers: API_HOST:', API_HOST);
+        console.log('fetchUsers: Headers:', headers);
+        console.log('fetchUsers: Token exists:', !!authService.getToken());
+        
+        const response = await fetch(`${API_HOST}/api/users`, {
+            headers: headers
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                console.error('fetchUsers: Unauthorized - token may be invalid');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`Unauthorized: ${errorData.message || 'Токен недействителен или истек'}`);
+            }
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.message || 'Unknown error'}`);
+        }
+
+        const result = await response.json();
+        if (result.status === 'success' && Array.isArray(result.data)) {
+            // Фильтруем только администраторов парковок
+            return result.data.filter(user => user.role === 'parking_administrator');
+        }
+        return [];
+    }
+
+    async fetchParkingAdmins(parkingId) {
+        const API_HOST = getAPIHost();
+        const headers = authService.getAuthHeaders();
+        
+        const response = await fetch(`${API_HOST}/api/user-parkings?parking_id=${parkingId}`, {
+            headers: headers
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.status === 'success' && Array.isArray(result.data)) {
+            return result.data.map(rel => rel.user_id);
+        }
+        return [];
+    }
+
+    async fetchCameras() {
+        const API_HOST = getAPIHost();
+        const headers = authService.getAuthHeaders();
+        
+        const response = await fetch(`${API_HOST}/api/cameras`, {
+            headers: headers
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.status === 'success' && Array.isArray(result.data)) {
+            return result.data;
+        }
+        return [];
+    }
+
+    async fetchParkingCameras(parkingId) {
+        const API_HOST = getAPIHost();
+        const headers = authService.getAuthHeaders();
+        
+        const response = await fetch(`${API_HOST}/api/parking-cameras?parking_id=${parkingId}`, {
+            headers: headers
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.status === 'success' && Array.isArray(result.data)) {
+            // Возвращаем массив ID камер
+            return result.data.map(pc => pc.camera_id);
+        }
+        return [];
+    }
+
+    async fetchAllParkingCameras() {
+        const API_HOST = getAPIHost();
+        const headers = authService.getAuthHeaders();
+        
+        const response = await fetch(`${API_HOST}/api/parking-cameras`, {
+            headers: headers
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.status === 'success' && Array.isArray(result.data)) {
+            // Возвращаем все связи для определения занятых камер
+            return result.data;
+        }
+        return [];
+    }
+
+    renderEditForm(parking, users, parkingAdmins, cameras, parkingCameras, allParkingCameras) {
+        const assignedAdminIds = new Set(parkingAdmins);
+        const assignedCameraIds = new Set(parkingCameras);
+        
+        // Определяем занятые камеры (привязанные к другим парковкам)
+        const occupiedCameraIds = new Set();
+        allParkingCameras.forEach(pc => {
+            // Если камера привязана к другой парковке (не к текущей), она занята
+            if (pc.parking_id !== parking.id) {
+                occupiedCameraIds.add(pc.camera_id);
+            }
+        });
+        
+        // Фильтруем камеры: показываем только свободные или уже привязанные к этой парковке
+        const availableCameras = cameras.filter(camera => 
+            !occupiedCameraIds.has(camera.id) || assignedCameraIds.has(camera.id)
+        );
+        
+        return `
+            <form id="editParkingForm" onsubmit="event.preventDefault(); window.serviceAdminParkingsView.saveParking(${parking.id})">
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #2c3e50;">Название парковки</label>
+                    <input type="text" id="parkingName" value="${parking.name || ''}" required 
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #2c3e50;">Адрес</label>
+                    <input type="text" id="parkingAddress" value="${parking.address || ''}" required 
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #2c3e50;">Широта</label>
+                        <input type="number" step="any" id="parkingLatitude" value="${parking.latitude || ''}" 
+                               style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #2c3e50;">Долгота</label>
+                        <input type="number" step="any" id="parkingLongitude" value="${parking.longitude || ''}" 
+                               style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #2c3e50;">Всего мест</label>
+                    <input type="number" id="parkingTotalSpots" value="${parking.total_spots || 0}" min="0" 
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+
+                <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 5px; border: 1px solid #ddd;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="parkingIsActive" ${parking.is_active === true || parking.isActive === true ? 'checked' : ''} 
+                               style="width: 20px; height: 20px; cursor: pointer;">
+                        <span style="font-weight: bold; color: #2c3e50;">Парковка активна</span>
+                    </label>
+                    <p style="margin-top: 0.5rem; margin-bottom: 0; font-size: 0.85rem; color: #666;">
+                        ${parking.is_active === true || parking.isActive === true 
+                            ? '✅ Парковка отображается пользователям и доступна для управления' 
+                            : '❌ Парковка скрыта от пользователей и недоступна для управления'}
+                    </p>
+                </div>
+
+                <div style="margin-bottom: 1.5rem; padding-top: 1.5rem; border-top: 2px solid #eee;">
+                    <label style="display: block; margin-bottom: 1rem; font-weight: bold; color: #2c3e50;">Камеры парковки</label>
+                    <div id="parkingCamerasList" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 1rem;">
+                        ${availableCameras.length === 0 
+                            ? '<p style="color: #999; text-align: center;">Нет доступных камер</p>'
+                            : availableCameras.map(camera => `
+                                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem; ${assignedCameraIds.has(camera.id) ? 'background: #e3f2fd;' : ''}">
+                                    <input type="checkbox" value="${camera.id}" ${assignedCameraIds.has(camera.id) ? 'checked' : ''} 
+                                           onchange="window.serviceAdminParkingsView.toggleCamera(${parking.id}, ${camera.id}, this.checked)"
+                                           style="width: 18px; height: 18px; cursor: pointer;">
+                                    <span>📹 ${camera.name} (${camera.camera_type || 'rtsp'}) ${camera.is_active ? '✅' : '❌'}</span>
+                                </label>
+                            `).join('')
+                        }
+                    </div>
+                    ${availableCameras.length === 0 
+                        ? '<p style="margin-top: 0.5rem; font-size: 0.85rem; color: #666;">Сначала создайте камеры в разделе "Управление камерами" или освободите занятые камеры</p>' 
+                        : cameras.length > availableCameras.length 
+                            ? `<p style="margin-top: 0.5rem; font-size: 0.85rem; color: #f39c12;">⚠️ ${cameras.length - availableCameras.length} камер(а) уже привязаны к другим парковкам и недоступны</p>`
+                            : ''}
+                </div>
+
+                <div style="margin-bottom: 1.5rem; padding-top: 1.5rem; border-top: 2px solid #eee;">
+                    <label style="display: block; margin-bottom: 1rem; font-weight: bold; color: #2c3e50;">Администраторы парковки</label>
+                    <div id="parkingAdminsList" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 1rem;">
+                        ${users.length === 0 
+                            ? '<p style="color: #999; text-align: center;">Нет доступных администраторов</p>'
+                            : users.map(user => `
+                                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem; ${assignedAdminIds.has(user.id) ? 'background: #e8f5e9;' : ''}">
+                                    <input type="checkbox" value="${user.id}" ${assignedAdminIds.has(user.id) ? 'checked' : ''} 
+                                           onchange="window.serviceAdminParkingsView.toggleAdmin(${parking.id}, ${user.id}, this.checked)"
+                                           style="width: 18px; height: 18px; cursor: pointer;">
+                                    <span>${user.username} (ID: ${user.id})</span>
+                                </label>
+                            `).join('')
+                        }
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid #eee;">
+                    <button type="button" onclick="window.serviceAdminParkingsView.closeEditModal()" 
+                            style="padding: 0.75rem 1.5rem; background: #95a5a6; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem;">
+                        Отмена
+                    </button>
+                    <button type="submit" 
+                            style="padding: 0.75rem 1.5rem; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; font-weight: bold;">
+                        Сохранить
+                    </button>
+                </div>
+            </form>
+        `;
+    }
+
+    async saveParking(parkingId) {
+        const name = document.getElementById('parkingName').value;
+        const address = document.getElementById('parkingAddress').value;
+        const latitude = document.getElementById('parkingLatitude').value;
+        const longitude = document.getElementById('parkingLongitude').value;
+        const totalSpots = document.getElementById('parkingTotalSpots').value;
+        const isActive = document.getElementById('parkingIsActive').checked;
+
+        const updateData = {
+            name: name.trim(),
+            address: address.trim(),
+            is_active: isActive
+        };
+
+        if (latitude) updateData.latitude = parseFloat(latitude);
+        if (longitude) updateData.longitude = parseFloat(longitude);
+        if (totalSpots) updateData.total_spots = parseInt(totalSpots);
+
+        const API_HOST = getAPIHost();
+        const headers = authService.getAuthHeaders();
+
+        if (window.app) {
+            window.app.toggleLoader(true);
+        }
+
+        try {
+            const response = await fetch(`${API_HOST}/api/parkings/${parkingId}`, {
+                method: 'PUT',
+                headers: headers,
+                body: JSON.stringify(updateData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Ошибка обновления парковки');
+            }
+
+            const result = await response.json();
+            if (result.status === 'success') {
+                toast.success('Парковка успешно обновлена!');
+                this.closeEditModal();
+                // Обновляем список парковок
+                await this.fetchParkings();
+            }
+        } catch (error) {
+            console.error('Failed to update parking:', error);
+            toast.error('Ошибка: ' + error.message);
+        } finally {
+            if (window.app) {
+                window.app.toggleLoader(false);
+            }
+        }
+    }
+
+    async toggleCamera(parkingId, cameraId, assign) {
+        const API_HOST = getAPIHost();
+        const headers = authService.getAuthHeaders();
+
+        try {
+            if (assign) {
+                // Добавляем камеру к парковке
+                const response = await fetch(`${API_HOST}/api/parking-cameras`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        parking_id: parkingId,
+                        camera_id: cameraId
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Ошибка добавления камеры');
+                }
+
+                toast.success('Камера успешно добавлена к парковке');
+                
+                // Обновляем список камер после успешного добавления
+                await this.refreshCamerasList(parkingId);
+            } else {
+                // Удаляем камеру из парковки
+                const response = await fetch(`${API_HOST}/api/parking-cameras/relation/remove`, {
+                    method: 'DELETE',
+                    headers: headers,
+                    body: JSON.stringify({
+                        parking_id: parkingId,
+                        camera_id: cameraId
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Ошибка удаления камеры');
+                }
+
+                toast.success('Камера успешно удалена из парковки');
+                
+                // Обновляем список камер после успешного удаления
+                await this.refreshCamerasList(parkingId);
+            }
+        } catch (error) {
+            console.error('Failed to toggle camera:', error);
+            toast.error('Ошибка: ' + error.message);
+            // Обновляем список камер, чтобы вернуть чекбокс в исходное состояние
+            await this.refreshCamerasList(parkingId);
+        }
+    }
+
+    async refreshCamerasList(parkingId) {
+        try {
+            const [cameras, parkingCameras, allParkingCameras] = await Promise.all([
+                this.fetchCameras(),
+                this.fetchParkingCameras(parkingId),
+                this.fetchAllParkingCameras()
+            ]);
+            
+            const camerasList = document.getElementById('parkingCamerasList');
+            if (camerasList) {
+                const assignedCameraIds = new Set(parkingCameras);
+                
+                // Определяем занятые камеры (привязанные к другим парковкам)
+                const occupiedCameraIds = new Set();
+                allParkingCameras.forEach(pc => {
+                    if (pc.parking_id !== parkingId) {
+                        occupiedCameraIds.add(pc.camera_id);
+                    }
+                });
+                
+                // Фильтруем камеры: показываем только свободные или уже привязанные к этой парковке
+                const availableCameras = cameras.filter(camera => 
+                    !occupiedCameraIds.has(camera.id) || assignedCameraIds.has(camera.id)
+                );
+                
+                camerasList.innerHTML = availableCameras.length === 0 
+                    ? '<p style="color: #999; text-align: center;">Нет доступных камер</p>'
+                    : availableCameras.map(camera => `
+                        <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem; ${assignedCameraIds.has(camera.id) ? 'background: #e3f2fd;' : ''}">
+                            <input type="checkbox" value="${camera.id}" ${assignedCameraIds.has(camera.id) ? 'checked' : ''} 
+                                   onchange="window.serviceAdminParkingsView.toggleCamera(${parkingId}, ${camera.id}, this.checked)"
+                                   style="width: 18px; height: 18px; cursor: pointer;">
+                            <span>📹 ${camera.name} (${camera.camera_type || 'rtsp'}) ${camera.is_active ? '✅' : '❌'}</span>
+                        </label>
+                    `).join('');
+            }
+        } catch (refreshError) {
+            console.error('Failed to refresh cameras list:', refreshError);
+        }
+    }
+
+    async toggleAdmin(parkingId, userId, assign) {
+        const API_HOST = getAPIHost();
+        const headers = authService.getAuthHeaders();
+
+        try {
+            if (assign) {
+                // Назначаем администратора
+                const response = await fetch(`${API_HOST}/api/user-parkings`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        user_id: userId,
+                        parking_id: parkingId
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Ошибка назначения администратора');
+                }
+            } else {
+                // Удаляем администратора
+                const response = await fetch(`${API_HOST}/api/user-parkings/relation/remove`, {
+                    method: 'DELETE',
+                    headers: headers,
+                    body: JSON.stringify({
+                        user_id: userId,
+                        parking_id: parkingId
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Ошибка удаления администратора');
+                }
+            }
+
+            // Обновляем визуальное состояние
+            const checkbox = document.querySelector(`input[type="checkbox"][value="${userId}"]`);
+            if (checkbox) {
+                const label = checkbox.closest('label');
+                if (label) {
+                    if (assign) {
+                        label.style.background = '#e8f5e9';
+                    } else {
+                        label.style.background = '';
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Failed to toggle admin:', error);
+            toast.error('Ошибка: ' + error.message);
+            // Возвращаем чекбокс в исходное состояние
+            const checkbox = document.querySelector(`input[type="checkbox"][value="${userId}"]`);
+            if (checkbox) {
+                checkbox.checked = !assign;
+            }
+        }
+    }
+
     destroy() {
-        // Очистка не требуется
+        // Удаляем модальные окна при уничтожении view
+        const editModal = document.getElementById('editParkingModal');
+        if (editModal) {
+            editModal.remove();
+        }
+        const createModal = document.getElementById('createParkingModal');
+        if (createModal) {
+            createModal.remove();
+        }
     }
 }
 

@@ -1,10 +1,21 @@
 // Сервис для работы с авторизацией
 class AuthService {
     constructor() {
-
         this.tokenKey = 'smart_park_token';
         this.userKey = 'smart_park_user';
-        this.API_HOST = window.app?.API_HOST || 'http://localhost:3000';
+    }
+
+    // Получить API_HOST (динамически из window.app или константы)
+    getAPIHost() {
+        // Используем глобальную функцию getAPIHost из constants.js, если доступна
+        if (typeof window.getAPIHost === 'function') {
+            return window.getAPIHost();
+        }
+        if (window.app && window.app.API_HOST) {
+            return window.app.API_HOST;
+        }
+        // Используем константу из constants.js
+        return typeof APP_CONFIG !== 'undefined' ? APP_CONFIG.API_HOST : 'https://smartparkistu.ru';
     }
 
     // Сохранить токен и данные пользователя
@@ -62,7 +73,8 @@ class AuthService {
     // Вход в систему
     async login(username, password) {
         try {
-            const response = await fetch(`${this.API_HOST}/api/auth/login`, {
+            const API_HOST = this.getAPIHost();
+            const response = await fetch(`${API_HOST}/api/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -112,8 +124,9 @@ class AuthService {
         }
 
         try {
-            console.log('getCurrentUser: Fetching user data with token...');
-            const response = await fetch(`${this.API_HOST}/api/auth/me`, {
+            const API_HOST = this.getAPIHost();
+            console.log('getCurrentUser: Fetching user data with token from', API_HOST);
+            const response = await fetch(`${API_HOST}/api/auth/me`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                 },
@@ -164,12 +177,17 @@ class AuthService {
     // Получить заголовки для авторизованных запросов
     getAuthHeaders() {
         const token = this.getToken();
-        return token ? {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        } : {
+        const headers = {
             'Content-Type': 'application/json',
         };
+
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        } else {
+            console.warn('getAuthHeaders: No token available!');
+        }
+
+        return headers;
     }
 }
 
@@ -180,7 +198,11 @@ const authService = new AuthService();
 window.debugAuth = function () {
     const token = authService.getToken();
     const user = authService.getUser();
+    const apiHost = typeof getAPIHost === 'function' ? getAPIHost() : authService.getAPIHost();
     console.log('=== Auth Debug Info ===');
+    console.log('API_HOST (from constants):', typeof APP_CONFIG !== 'undefined' ? APP_CONFIG.API_HOST : 'not loaded');
+    console.log('API_HOST (current):', apiHost);
+    console.log('window.app.API_HOST:', window.app?.API_HOST);
     console.log('Token exists:', !!token);
     console.log('Token value:', token ? token.substring(0, 20) + '...' : 'null');
     console.log('User:', user);
@@ -189,6 +211,6 @@ window.debugAuth = function () {
     console.log('Is parking admin:', authService.isParkingAdmin());
     console.log('LocalStorage token:', localStorage.getItem('smart_park_token') ? 'exists' : 'missing');
     console.log('LocalStorage user:', localStorage.getItem('smart_park_user') ? 'exists' : 'missing');
-    return { token, user, isAuthenticated: authService.isAuthenticated() };
+    return { token, user, isAuthenticated: authService.isAuthenticated(), apiHost };
 };
 

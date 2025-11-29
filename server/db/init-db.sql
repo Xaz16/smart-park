@@ -83,3 +83,14 @@ CREATE INDEX idx_user_parking_parking_id ON user_parking(parking_id);
 CREATE INDEX idx_user_role ON app_user(role);
 CREATE INDEX idx_parking_camera_parking_id ON parking_camera(parking_id);
 CREATE INDEX idx_parking_camera_camera_id ON parking_camera(camera_id);
+
+-- Исправление последовательностей для автоинкремента
+-- Это гарантирует, что последовательности синхронизированы с текущими максимальными значениями id
+-- Полезно, если данные были вставлены напрямую с указанием id
+SELECT setval('parking_id_seq', COALESCE((SELECT MAX(id) FROM parking), 1), true);
+SELECT setval('camera_id_seq', COALESCE((SELECT MAX(id) FROM camera), 1), true);
+SELECT setval('parking_camera_id_seq', COALESCE((SELECT MAX(id) FROM parking_camera), 1), true);
+SELECT setval('parking_spot_id_seq', COALESCE((SELECT MAX(id) FROM parking_spot), 1), true);
+SELECT setval('parking_history_id_seq', COALESCE((SELECT MAX(id) FROM parking_history), 1), true);
+SELECT setval('app_user_id_seq', COALESCE((SELECT MAX(id) FROM app_user), 1), true);
+SELECT setval('user_parking_id_seq', COALESCE((SELECT MAX(id) FROM user_parking), 1), true);

@@ -44,6 +44,8 @@ services:
       NODE_ENV: production
       NN_SERVICE_URL: http://nn-service:5000
       NN_SERVICE_TIMEOUT: 30000
+      JWT_SECRET: your-secret-key-change-in-production
+      JWT_EXPIRES_IN: 7d  # Время жизни токена: 7 дней (можно использовать: s, m, h, d)
     volumes:
       - ./:/app
     working_dir: /app

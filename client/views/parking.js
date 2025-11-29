@@ -210,7 +210,7 @@ class ParkingView {
         if (!imagePath || typeof imagePath !== 'string') {
             return null;
         }
-        const API_HOST = window.app?.API_HOST || 'https://smartparkistu.ru';
+        const API_HOST = getAPIHost();
         if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
             return imagePath;
         }
@@ -242,7 +242,7 @@ class ParkingView {
 
     async fetchParkingDetails(parkingId, showLoader = false) {
         if (!parkingId) return;
-        const API_HOST = window.app?.API_HOST || 'https://smartparkistu.ru';
+        const API_HOST = getAPIHost();
         
         if (showLoader && window.app) {
             window.app.toggleLoader(true);
@@ -262,7 +262,7 @@ class ParkingView {
             }
         } catch (error) {
             console.error('Failed to load parking:', error);
-            alert('Не удалось загрузить данные парковки. Попробуйте позже.');
+            toast.error('Не удалось загрузить данные парковки. Попробуйте позже.');
         } finally {
             if (showLoader && window.app) {
                 window.app.toggleLoader(false);

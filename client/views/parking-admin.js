@@ -39,7 +39,7 @@ class ParkingAdminView {
     }
 
     async fetchMyParkings() {
-        const API_HOST = window.app?.API_HOST || 'http://localhost:3000';
+        const API_HOST = getAPIHost();
         const headers = authService.getAuthHeaders();
         
         if (window.app) {
@@ -208,7 +208,7 @@ class ParkingAdminView {
         if (!imagePath || typeof imagePath !== 'string') {
             return null;
         }
-        const API_HOST = window.app?.API_HOST || 'https://smartparkistu.ru';
+        const API_HOST = getAPIHost();
         if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
             return imagePath;
         }

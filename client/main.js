@@ -1,7 +1,5 @@
 // Главный файл приложения с роутингом
-const API_HOST = 'https://smartparkistu.ru';
-// const API_HOST = 'http://localhost:3000';
-const POLLING_INTERVAL = 15000;
+// Константы теперь в constants.js
 
 // Убеждаемся, что authService доступен глобально
 if (typeof authService === 'undefined') {
@@ -84,8 +82,8 @@ function updateGlobalParkingList(parkingData) {
 
 // Экспортируем функции в глобальный объект для доступа из views
 window.app = {
-    API_HOST,
-    POLLING_INTERVAL,
+    API_HOST: APP_CONFIG.API_HOST,
+    POLLING_INTERVAL: APP_CONFIG.POLLING_INTERVAL,
     toggleSidebar,
     toggleLoader,
     openAuthModal,
@@ -243,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (requiredRole && !authService.hasRole(requiredRole)) {
                 router.navigate('/');
-                alert('У вас нет доступа к этой странице');
+                toast.warning('У вас нет доступа к этой странице');
                 return;
             }
         };
@@ -264,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 router.navigate('/');
                 if (user && !authService.isSuperAdmin()) {
-                    alert('Только суперадминистратор может получить доступ к этой странице');
+                    toast.warning('Только суперадминистратор может получить доступ к этой странице');
                 } else {
                     openAuthModal();
                 }
@@ -336,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 router.navigate('/');
                 if (user && !authService.isParkingAdmin()) {
-                    alert('Только администратор парковки может получить доступ к этой странице');
+                    toast.warning('Только администратор парковки может получить доступ к этой странице');
                 } else {
                     openAuthModal();
                 }
