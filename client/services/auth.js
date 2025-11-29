@@ -194,6 +194,9 @@ class AuthService {
 // Создаем глобальный экземпляр
 const authService = new AuthService();
 
+// Экспортируем в глобальную область для обратной совместимости
+window.authService = authService;
+
 // Утилита для отладки (можно вызвать в консоли браузера)
 window.debugAuth = function () {
     const token = authService.getToken();
