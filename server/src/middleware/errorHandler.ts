@@ -28,7 +28,7 @@ export const errorHandler = (
   console.error('Error:', err);
   return res.status(500).json({
     status: 'error',
-    message: 'Internal server error',
+    message: 'Внутренняя ошибка сервера',
   });
 };
 

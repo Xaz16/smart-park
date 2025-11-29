@@ -38,7 +38,7 @@ export const getCameraById = async (
     const camera = await cameraRepository.findById(parseInt(id));
 
     if (!camera) {
-      throw new AppError('Camera not found', 404);
+      throw new AppError('Камера не найдена', 404);
     }
 
     res.json({
@@ -58,19 +58,19 @@ export const createCamera = async (
   try {
     // Только администратор сервиса может создавать камеры
     if (!req.user || req.user.role !== 'service_admin') {
-      throw new AppError('Only service admin can create cameras', 403);
+      throw new AppError('Только суперадминистратор может создавать камеры', 403);
     }
 
     const data: CreateCameraInput = req.body;
 
     if (!data.name) {
-      throw new AppError('Name is required', 400);
+      throw new AppError('Название обязательно для заполнения', 400);
     }
 
     // Для rtsp камер rtsp_url обязателен
     const cameraType = data.camera_type || 'rtsp';
     if (cameraType === 'rtsp' && !data.rtsp_url) {
-      throw new AppError('rtsp_url is required for rtsp cameras', 400);
+      throw new AppError('RTSP URL обязателен для RTSP камер', 400);
     }
 
     const camera = await cameraRepository.create(data);
@@ -92,20 +92,20 @@ export const updateCamera = async (
   try {
     // Только администратор сервиса может обновлять камеры
     if (!req.user || req.user.role !== 'service_admin') {
-      throw new AppError('Only service admin can update cameras', 403);
+      throw new AppError('Только суперадминистратор может обновлять камеры', 403);
     }
 
     const { id } = req.params;
     const updates: UpdateCameraInput = req.body;
 
     if (Object.keys(updates).filter((key) => updates[key as keyof UpdateCameraInput] !== undefined).length === 0) {
-      throw new AppError('No fields to update', 400);
+      throw new AppError('Нет полей для обновления', 400);
     }
 
     const camera = await cameraRepository.update(parseInt(id), updates);
 
     if (!camera) {
-      throw new AppError('Camera not found', 404);
+      throw new AppError('Камера не найдена', 404);
     }
 
     res.json({
@@ -125,7 +125,7 @@ export const deleteCamera = async (
   try {
     // Только администратор сервиса может удалять камеры
     if (!req.user || req.user.role !== 'service_admin') {
-      throw new AppError('Only service admin can delete cameras', 403);
+      throw new AppError('Только суперадминистратор может удалять камеры', 403);
     }
 
     const { id } = req.params;

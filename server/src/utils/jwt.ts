@@ -17,7 +17,7 @@ export const verifyToken = (token: string): JWTPayload => {
   try {
     return jwt.verify(token, JWT_SECRET) as JWTPayload;
   } catch (error) {
-    throw new Error('Invalid or expired token');
+    throw new Error('Недействительный или истекший токен');
   }
 };
 

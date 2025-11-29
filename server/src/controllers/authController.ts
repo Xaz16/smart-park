@@ -14,26 +14,26 @@ export const login = async (
     const { username, password }: LoginInput = req.body;
 
     if (!username || !password) {
-      throw new AppError('Username and password are required', 400);
+      throw new AppError('Логин и пароль обязательны для заполнения', 400);
     }
 
     // Находим пользователя
     const user = await appUserRepository.findByUsername(username);
 
     if (!user) {
-      throw new AppError('Invalid username or password', 401);
+      throw new AppError('Неверный логин или пароль', 401);
     }
 
     // Проверяем, активен ли пользователь
     if (!user.is_active) {
-      throw new AppError('User account is disabled', 403);
+      throw new AppError('Учетная запись пользователя отключена', 403);
     }
 
     // Проверяем пароль
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isPasswordValid) {
-      throw new AppError('Invalid username or password', 401);
+      throw new AppError('Неверный логин или пароль', 401);
     }
 
     // Генерируем JWT токен
@@ -68,13 +68,13 @@ export const getCurrentUser = async (
 ) => {
   try {
     if (!req.user) {
-      throw new AppError('Authentication required', 401);
+      throw new AppError('Требуется авторизация', 401);
     }
 
     const user = await appUserRepository.findById(req.user.userId);
 
     if (!user) {
-      throw new AppError('User not found', 404);
+      throw new AppError('Пользователь не найден', 404);
     }
 
     res.json({

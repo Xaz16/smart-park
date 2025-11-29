@@ -49,7 +49,7 @@ export const authenticate = (
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new AppError('Authorization token required', 401);
+      throw new AppError('Требуется токен авторизации', 401);
     }
 
     const token = authHeader.substring(7); // Убираем 'Bearer '
@@ -59,7 +59,7 @@ export const authenticate = (
       req.user = decoded;
       next();
     } catch (error) {
-      throw new AppError('Invalid or expired token', 401);
+      throw new AppError('Недействительный или истекший токен', 401);
     }
   } catch (error) {
     next(error);
@@ -70,13 +70,13 @@ export const authenticate = (
 export const requireRole = (...allowedRoles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return next(new AppError('Authentication required', 401));
+      return next(new AppError('Требуется авторизация', 401));
     }
 
     if (!allowedRoles.includes(req.user.role)) {
       return next(
         new AppError(
-          'Insufficient permissions. Required role: ' + allowedRoles.join(' or '),
+          'Недостаточно прав. Требуемая роль: ' + allowedRoles.join(' или '),
           403
         )
       );
@@ -100,7 +100,7 @@ export const checkParkingAccess = async (
 ) => {
   try {
     if (!req.user) {
-      return next(new AppError('Authentication required', 401));
+      return next(new AppError('Требуется авторизация', 401));
     }
 
     // Администратор сервиса имеет доступ ко всем парковкам
@@ -113,7 +113,7 @@ export const checkParkingAccess = async (
       const parkingId = req.params.id || req.body.parking_id || req.query.parking_id;
 
       if (!parkingId) {
-        return next(new AppError('Parking ID is required', 400));
+        return next(new AppError('Требуется ID парковки', 400));
       }
 
       // Проверяем, есть ли у пользователя доступ к этой парковке
@@ -125,14 +125,14 @@ export const checkParkingAccess = async (
 
       if (result.rows.length === 0) {
         return next(
-          new AppError('Access denied. You do not have permission to access this parking', 403)
+          new AppError('Доступ запрещен. У вас нет прав для доступа к этой парковке', 403)
         );
       }
 
       return next();
     }
 
-    return next(new AppError('Insufficient permissions', 403));
+    return next(new AppError('Недостаточно прав', 403));
   } catch (error) {
     next(error);
   }

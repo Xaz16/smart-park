@@ -75,7 +75,7 @@ export const getParkingById = async (
     const parking = await parkingRepository.findById(parseInt(id));
 
     if (!parking) {
-      throw new AppError('Parking not found', 404);
+      throw new AppError('Парковка не найдена', 404);
     }
 
     // Добавляем результаты анализа от NN и информацию о камере для этой парковки
@@ -131,13 +131,13 @@ export const createParking = async (
   try {
     // Только администратор сервиса может создавать парковки
     if (!req.user || req.user.role !== 'service_admin') {
-      throw new AppError('Only service admin can create parkings', 403);
+      throw new AppError('Только суперадминистратор может создавать парковки', 403);
     }
 
     const data: CreateParkingInput = req.body;
 
     if (!data.name || !data.address) {
-      throw new AppError('Name and address are required', 400);
+      throw new AppError('Название и адрес обязательны для заполнения', 400);
     }
 
     const parking = await parkingRepository.create(data);
@@ -158,7 +158,7 @@ export const updateParking = async (
 ) => {
   try {
     if (!req.user) {
-      throw new AppError('Authentication required', 401);
+      throw new AppError('Требуется авторизация', 401);
     }
 
     const { id } = req.params;
@@ -173,24 +173,24 @@ export const updateParking = async (
 
       if (!hasAccess) {
         throw new AppError(
-          'Access denied. You do not have permission to access this parking',
+          'Доступ запрещен. У вас нет прав для доступа к этой парковке',
           403
         );
       }
     } else if (req.user.role !== 'service_admin') {
-      throw new AppError('Insufficient permissions', 403);
+      throw new AppError('Недостаточно прав', 403);
     }
 
     const updates: UpdateParkingInput = req.body;
 
     if (Object.keys(updates).filter((key) => updates[key as keyof UpdateParkingInput] !== undefined).length === 0) {
-      throw new AppError('No fields to update', 400);
+      throw new AppError('Нет полей для обновления', 400);
     }
 
     const parking = await parkingRepository.update(parkingId, updates);
 
     if (!parking) {
-      throw new AppError('Parking not found', 404);
+      throw new AppError('Парковка не найдена', 404);
     }
 
     res.json({
@@ -210,7 +210,7 @@ export const deleteParking = async (
   try {
     // Только администратор сервиса может удалять парковки
     if (!req.user || req.user.role !== 'service_admin') {
-      throw new AppError('Only service admin can delete parkings', 403);
+      throw new AppError('Только суперадминистратор может удалять парковки', 403);
     }
 
     const { id } = req.params;

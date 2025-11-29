@@ -36,7 +36,7 @@ export const getParkingCameraById = async (
     const relationship = await parkingCameraRepository.findById(parseInt(id));
 
     if (!relationship) {
-      throw new AppError('Parking camera relationship not found', 404);
+      throw new AppError('Связь парковки с камерой не найдена', 404);
     }
 
     res.json({
@@ -56,13 +56,13 @@ export const createParkingCamera = async (
   try {
     // Только администратор сервиса может создавать связи
     if (!req.user || req.user.role !== 'service_admin') {
-      throw new AppError('Only service admin can manage parking-camera relationships', 403);
+      throw new AppError('Только суперадминистратор может управлять связями парковок с камерами', 403);
     }
 
     const { parking_id, camera_id } = req.body;
 
     if (!parking_id || !camera_id) {
-      throw new AppError('parking_id and camera_id are required', 400);
+      throw new AppError('Требуются parking_id и camera_id', 400);
     }
 
     const relationship = await parkingCameraRepository.create(
@@ -78,13 +78,13 @@ export const createParkingCamera = async (
     if (error.code === '23505') {
       // Unique constraint violation
       throw new AppError(
-        'This parking-camera relationship already exists',
+        'Связь между этой парковкой и камерой уже существует',
         409
       );
     }
     if (error.code === '23503') {
       // Foreign key constraint violation
-      throw new AppError('Parking or camera not found', 404);
+      throw new AppError('Парковка или камера не найдены', 404);
     }
     next(error);
   }
@@ -98,14 +98,14 @@ export const deleteParkingCamera = async (
   try {
     // Только администратор сервиса может удалять связи
     if (!req.user || req.user.role !== 'service_admin') {
-      throw new AppError('Only service admin can manage parking-camera relationships', 403);
+      throw new AppError('Только суперадминистратор может управлять связями парковок с камерами', 403);
     }
 
     const { id } = req.params;
     const deleted = await parkingCameraRepository.delete(parseInt(id));
 
     if (!deleted) {
-      throw new AppError('Parking camera relationship not found', 404);
+      throw new AppError('Связь парковки с камерой не найдена', 404);
     }
 
     res.status(204).send();
@@ -122,13 +122,13 @@ export const deleteParkingCameraByRelation = async (
   try {
     // Только администратор сервиса может удалять связи
     if (!req.user || req.user.role !== 'service_admin') {
-      throw new AppError('Only service admin can manage parking-camera relationships', 403);
+      throw new AppError('Только суперадминистратор может управлять связями парковок с камерами', 403);
     }
 
     const { parking_id, camera_id } = req.body;
 
     if (!parking_id || !camera_id) {
-      throw new AppError('parking_id and camera_id are required', 400);
+      throw new AppError('Требуются parking_id и camera_id', 400);
     }
 
     const deleted = await parkingCameraRepository.deleteByRelation(
@@ -137,7 +137,7 @@ export const deleteParkingCameraByRelation = async (
     );
 
     if (!deleted) {
-      throw new AppError('Parking camera relationship not found', 404);
+      throw new AppError('Связь парковки с камерой не найдена', 404);
     }
 
     res.status(204).send();

@@ -36,6 +36,15 @@ function openAuthModal() {
     if (authModal && overlay) {
         authModal.classList.add('active');
         overlay.classList.add('active');
+
+        // Сбрасываем состояние поля пароля при открытии модального окна
+        const passwordInput = document.getElementById('authPassword');
+        const passwordToggle = document.getElementById('passwordToggle');
+        if (passwordInput && passwordToggle) {
+            passwordInput.type = 'password';
+            passwordToggle.textContent = '👁️';
+            passwordToggle.title = 'Показать пароль';
+        }
     }
 }
 
@@ -80,6 +89,24 @@ function updateGlobalParkingList(parkingData) {
     });
 }
 
+// Функция для переключения видимости пароля
+function togglePasswordVisibility() {
+    const passwordInput = document.getElementById('authPassword');
+    const passwordToggle = document.getElementById('passwordToggle');
+
+    if (passwordInput && passwordToggle) {
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            passwordToggle.textContent = '🙈';
+            passwordToggle.title = 'Скрыть пароль';
+        } else {
+            passwordInput.type = 'password';
+            passwordToggle.textContent = '👁️';
+            passwordToggle.title = 'Показать пароль';
+        }
+    }
+}
+
 // Экспортируем функции в глобальный объект для доступа из views
 window.app = {
     API_HOST: APP_CONFIG.API_HOST,
@@ -88,6 +115,7 @@ window.app = {
     toggleLoader,
     openAuthModal,
     closeAuthModal,
+    togglePasswordVisibility,
     updateGlobalParkingList,
     getGlobalParkingData: () => globalParkingData
 };
@@ -209,8 +237,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
         } else {
-            // Пользователь не авторизован - показываем модальное окно
-            authIcon.innerHTML = '👤';
+            // Пользователь не авторизован - показываем иконку входа и модальное окно
+            authIcon.innerHTML = '🔑';
             authIcon.title = 'Войти';
             authIcon.style.cursor = 'pointer';
             authIcon.onclick = () => {

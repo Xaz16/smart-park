@@ -43,7 +43,7 @@ export const getAppUserById = async (
     const user = await appUserRepository.findById(parseInt(id));
 
     if (!user) {
-      throw new AppError('User not found', 404);
+      throw new AppError('Пользователь не найден', 404);
     }
 
     res.json({
@@ -63,14 +63,14 @@ export const createAppUser = async (
   try {
     // Только администратор сервиса может создавать пользователей
     if (!req.user || req.user.role !== 'service_admin') {
-      throw new AppError('Only service admin can create users', 403);
+      throw new AppError('Только суперадминистратор может создавать пользователей', 403);
     }
 
     const data: CreateAppUserInput = req.body;
 
     if (!data.username || !data.password || !data.role) {
       throw new AppError(
-        'username, password, and role are required',
+        'Логин, пароль и роль обязательны для заполнения',
         400
       );
     }
@@ -88,7 +88,7 @@ export const createAppUser = async (
   } catch (error: any) {
     if (error.code === '23505') {
       // Unique constraint violation
-      throw new AppError('Username already exists', 409);
+      throw new AppError('Пользователь с таким логином уже существует', 409);
     }
     next(error);
   }
@@ -102,7 +102,7 @@ export const updateAppUser = async (
   try {
     // Только администратор сервиса может обновлять пользователей
     if (!req.user || req.user.role !== 'service_admin') {
-      throw new AppError('Only service admin can update users', 403);
+      throw new AppError('Только суперадминистратор может обновлять пользователей', 403);
     }
 
     const { id } = req.params;
@@ -119,7 +119,7 @@ export const updateAppUser = async (
       Object.keys(updates).filter((key) => updates[key as keyof UpdateAppUserInput] !== undefined && key !== 'password').length === 0 &&
       !passwordHash
     ) {
-      throw new AppError('No fields to update', 400);
+      throw new AppError('Нет полей для обновления', 400);
     }
 
     const user = await appUserRepository.update(
@@ -129,7 +129,7 @@ export const updateAppUser = async (
     );
 
     if (!user) {
-      throw new AppError('User not found', 404);
+      throw new AppError('Пользователь не найден', 404);
     }
 
     res.json({
@@ -138,7 +138,7 @@ export const updateAppUser = async (
     });
   } catch (error: any) {
     if (error.code === '23505') {
-      throw new AppError('Username already exists', 409);
+      throw new AppError('Пользователь с таким логином уже существует', 409);
     }
     next(error);
   }
@@ -152,7 +152,7 @@ export const deleteAppUser = async (
   try {
     // Только администратор сервиса может удалять пользователей
     if (!req.user || req.user.role !== 'service_admin') {
-      throw new AppError('Only service admin can delete users', 403);
+      throw new AppError('Только суперадминистратор может удалять пользователей', 403);
     }
 
     const { id } = req.params;
