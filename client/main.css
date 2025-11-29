@@ -393,3 +393,207 @@ body {
     }
 }
 
+/* Стили для списка парковок на главной странице */
+.parkings-list-section {
+    width: 100%;
+}
+
+.parkings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+.parking-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.parking-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+}
+
+.parking-card-image {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    background: linear-gradient(45deg, #333, #555);
+    overflow: hidden;
+}
+
+.parking-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.parking-card-image .no-image {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1rem;
+}
+
+.parking-card-status {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.parking-card-content {
+    padding: 1.5rem;
+    flex-grow: 1;
+}
+
+.parking-card-title {
+    font-size: 1.3rem;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.parking-card-address {
+    color: #666;
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
+.parking-card-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+}
+
+.stat-label {
+    color: #666;
+}
+
+.stat-value {
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.parking-card-occupancy {
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #eee;
+}
+
+.parking-card-footer {
+    padding: 1rem 1.5rem;
+    background-color: #f8f9fa;
+    border-top: 1px solid #eee;
+}
+
+.view-details {
+    color: #3498db;
+    font-weight: bold;
+    font-size: 0.95rem;
+}
+
+.loading-message,
+.empty-message,
+.error-message {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem;
+    color: #666;
+    font-size: 1.1rem;
+}
+
+.error-message {
+    color: #e74c3c;
+}
+
+@media (max-width: 768px) {
+    .parkings-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .parking-card-image {
+        height: 180px;
+    }
+}
+
+/* Стили для админ-панелей */
+.admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.admin-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 2rem;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    text-align: center;
+}
+
+.admin-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+}
+
+.admin-card-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.admin-card h3 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.admin-card p {
+    color: #666;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.auth-error {
+    display: block;
+    color: #e74c3c;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: #fee;
+    border-radius: 5px;
+    border: 1px solid #fcc;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .admin-grid {
+        grid-template-columns: 1fr;
+    }
+}
+

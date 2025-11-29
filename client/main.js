@@ -1,130 +1,64 @@
+// Главный файл приложения с роутингом
 const API_HOST = 'https://smartparkistu.ru';
 // const API_HOST = 'http://localhost:3000';
-const PARKINGS_ENDPOINT = `${API_HOST}/api/parkings`;
 const POLLING_INTERVAL = 15000;
-const parkingImageElement = document.getElementById('parkingImage');
 
-let parkingData = [];
-let currentVideo = 0;
-let selectedParkingId = null;
-let pollingTimer = null;
+// Убеждаемся, что authService доступен глобально
+if (typeof authService === 'undefined') {
+    console.error('authService не загружен! Убедитесь, что services/auth.js подключен перед main.js');
+}
 
+// Текущий активный view
+let currentView = null;
+
+// Глобальные функции для UI
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
-    sidebar.classList.toggle('active');
-    overlay.classList.toggle('active');
+    if (sidebar && overlay) {
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+    }
 }
 
-function lastVideo() {
-    currentVideo = (currentVideo - 1 + parkingData.length) % parkingData.length;
-    updateVideoDisplay();
-}
-
-function nextVideo() {
-    currentVideo = (currentVideo + 1) % parkingData.length;
-    updateVideoDisplay();
-}
-
-function selectParking(parkingNumber) {
-    currentVideo = parkingNumber;
-    updateVideoDisplay();
-    toggleSidebar();
-}
-
-function updateVideoDisplay() {
-    if (!parkingData.length) {
-        return;
-    }
-
-    const currentParking = parkingData[currentVideo];
-    if (!currentParking) {
-        return;
-    }
-
-    selectedParkingId = currentParking.id;
-    document.querySelector('.video-title').textContent = currentParking.title;
-
-    // Используем данные анализа от нейронной сети
-    const totalSpaces = currentParking.hasAnalysis
-        ? currentParking.totalSpaces
-        : (currentParking.totalSpaces || '—');
-    const freeSpaces = currentParking.hasAnalysis
-        ? currentParking.freeSpaces
-        : '—';
-    const occupiedSpaces = currentParking.hasAnalysis
-        ? currentParking.occupiedSpaces
-        : '—';
-
-    const totalSpacesElement = document.getElementById('totalSpaces');
-    const freeSpacesElement = document.getElementById('freeSpaces');
-    const occupiedSpacesElement = document.getElementById('occupiedSpaces');
-
-    if (totalSpacesElement) {
-        totalSpacesElement.textContent = totalSpaces;
-    }
-    if (freeSpacesElement) {
-        freeSpacesElement.textContent = freeSpaces;
-    }
-    if (occupiedSpacesElement) {
-        occupiedSpacesElement.textContent = occupiedSpaces;
-    }
-
-    // Обновляем стиль для свободных мест в зависимости от наличия данных анализа
-    if (freeSpacesElement) {
-        if (currentParking.hasAnalysis) {
-            freeSpacesElement.style.color = '#219a52';
-            if (freeSpacesElement.parentElement) {
-                freeSpacesElement.parentElement.style.color = '#219a52';
-            }
+function toggleLoader(show) {
+    const loader = document.getElementById('loader');
+    if (loader) {
+        if (show) {
+            loader.classList.remove('hidden');
         } else {
-            freeSpacesElement.style.color = '#999';
-            if (freeSpacesElement.parentElement) {
-                freeSpacesElement.parentElement.style.color = '#999';
-            }
+            loader.classList.add('hidden');
         }
     }
-
-    document.getElementById('parkingAddress').textContent = currentParking.address;
-    document.getElementById('parkingId').textContent = currentParking.id;
-    document.getElementById('parkingStatus').textContent = currentParking.isActive ? 'Активна' : 'Неактивна';
-    document.getElementById('parkingCoords').textContent = `${currentParking.latitude}, ${currentParking.longitude}`;
-    document.getElementById('parkingCreated').textContent = formatDate(currentParking.createdAt);
-
-    // Отображаем время последнего обновления анализа, если доступно
-    const lastUpdateInfoElement = document.getElementById('lastUpdateInfo');
-    if (lastUpdateInfoElement) {
-        if (currentParking.hasAnalysis && currentParking.analysisLastUpdate) {
-            const lastUpdateDate = new Date(currentParking.analysisLastUpdate);
-            const now = new Date();
-            const diffMs = now - lastUpdateDate;
-            const diffSeconds = Math.floor(diffMs / 1000);
-            const diffMinutes = Math.floor(diffSeconds / 60);
-
-            let timeAgo = '';
-            if (diffSeconds < 60) {
-                timeAgo = `${diffSeconds} сек. назад`;
-            } else if (diffMinutes < 60) {
-                timeAgo = `${diffMinutes} мин. назад`;
-            } else {
-                const diffHours = Math.floor(diffMinutes / 60);
-                timeAgo = `${diffHours} ч. назад`;
-            }
-
-            lastUpdateInfoElement.textContent = `Обновлено: ${timeAgo}`;
-            lastUpdateInfoElement.style.color = '#219a52';
-        } else {
-            lastUpdateInfoElement.textContent = 'Данные анализа недоступны';
-            lastUpdateInfoElement.style.color = '#999';
-        }
-    }
-
-    updateParkingImage(currentParking.lastPicture);
-    startParkingPolling();
 }
 
-function updateParkingList() {
+function openAuthModal() {
+    const authModal = document.getElementById('authModal');
+    const overlay = document.getElementById('overlay');
+    if (authModal && overlay) {
+        authModal.classList.add('active');
+        overlay.classList.add('active');
+    }
+}
+
+function closeAuthModal() {
+    const authModal = document.getElementById('authModal');
+    const overlay = document.getElementById('overlay');
+    if (authModal && overlay) {
+        authModal.classList.remove('active');
+        overlay.classList.remove('active');
+    }
+}
+
+// Глобальное хранилище данных парковок для сайдбара
+let globalParkingData = [];
+
+// Функция для обновления списка парковок в сайдбаре
+function updateGlobalParkingList(parkingData) {
+    globalParkingData = parkingData;
     const list = document.getElementById('parkingList');
+    if (!list) return;
+
     list.innerHTML = '';
 
     if (!parkingData.length) {
@@ -135,211 +69,329 @@ function updateParkingList() {
         return;
     }
 
-    parkingData.forEach((parking, index) => {
+    parkingData.forEach((parking) => {
         const item = document.createElement('li');
         item.textContent = parking.title;
-        item.onclick = () => selectParking(index);
+        item.onclick = () => {
+            router.navigate(`/parking/${parking.id}`);
+            if (window.app) {
+                window.app.toggleSidebar();
+            }
+        };
         list.appendChild(item);
     });
 }
 
-function toggleLoader(show) {
-    const loader = document.getElementById('loader');
-    if (show) {
-        loader.classList.remove('hidden');
-    } else {
-        loader.classList.add('hidden');
-    }
-}
+// Экспортируем функции в глобальный объект для доступа из views
+window.app = {
+    API_HOST,
+    POLLING_INTERVAL,
+    toggleSidebar,
+    toggleLoader,
+    openAuthModal,
+    closeAuthModal,
+    updateGlobalParkingList,
+    getGlobalParkingData: () => globalParkingData
+};
 
-function formatDate(dateString) {
-    if (!dateString) return '—';
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return '—';
-    return date.toLocaleString('ru-RU');
-}
+// Инициализация роутера после загрузки DOM
+document.addEventListener('DOMContentLoaded', () => {
+    // Регистрируем маршруты (важно: более специфичные маршруты должны быть зарегистрированы первыми)
 
-function stopParkingPolling() {
-    if (pollingTimer) {
-        clearInterval(pollingTimer);
-        pollingTimer = null;
-    }
-}
+    // Страница деталей парковки
+    router.route('/parking/:id', (params) => {
+        if (currentView && currentView.destroy) {
+            currentView.destroy();
+        }
+        currentView = new ParkingView();
+        currentView.render(params);
+    });
 
-function startParkingPolling() {
-    if (!selectedParkingId) return;
-    stopParkingPolling();
-    pollingTimer = setInterval(() => {
-        fetchParkingDetails(selectedParkingId);
-    }, POLLING_INTERVAL);
-}
+    // Главная страница
+    router.route('/', (params) => {
+        if (currentView && currentView.destroy) {
+            currentView.destroy();
+        }
+        currentView = new HomeView();
+        currentView.render();
+    });
 
-function formatParking(parking) {
-    // Используем данные анализа от нейронной сети, если они доступны
-    const analysis = parking.analysis;
-    const totalSpots = analysis?.total_spots ?? parking.total_spots ?? '—';
-    const freeSpots = analysis?.free_spots ?? '—';
-    const occupiedSpots = analysis?.occupied_spots ?? '—';
-    const spotsState = analysis?.spots_state || null;
-    const slotDetails = analysis?.slot_details || null;
-    const lastUpdate = analysis?.last_update || null;
-
-    // Используем изображение от камеры, если доступно
-    const cameraImageUrl = parking.camera?.image_url
-        ? resolveImageUrl(parking.camera.image_url)
-        : null;
-
-    // Приоритет: изображение от камеры > last_picture
-    const imageUrl = cameraImageUrl || resolveImageUrl(parking.last_picture || parking.lastPicture);
-
-    return {
-        title: parking.name || 'Парковка',
-        totalSpaces: totalSpots,
-        freeSpaces: freeSpots,
-        occupiedSpaces: occupiedSpots,
-        spotsState: spotsState,
-        slotDetails: slotDetails,
-        address: parking.address || '—',
-        id: parking.id || '—',
-        isActive: parking.is_active,
-        latitude: parking.latitude || '—',
-        longitude: parking.longitude || '—',
-        createdAt: parking.created_at || parking.createdAt || null,
-        lastPicture: imageUrl,
-        camera: parking.camera || null,
-        analysisLastUpdate: lastUpdate,
-        hasAnalysis: analysis !== null && analysis !== undefined
-    };
-}
-
-function resolveImageUrl(imagePath) {
-    if (!imagePath || typeof imagePath !== 'string') {
-        return null;
-    }
-    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-        return imagePath;
-    }
-    return `${API_HOST}${imagePath}`;
-}
-
-function updateParkingImage(imageUrl) {
-    if (!parkingImageElement) {
-        return;
-    }
-    if (imageUrl) {
-        // Добавляем cache buster для обновления изображения при polling
-        // Для static камер изображение меняется каждые 15 секунд
-        const cacheBuster = Date.now();
-        const separator = imageUrl.includes('?') ? '&' : '?';
-        parkingImageElement.src = `${imageUrl}${separator}t=${cacheBuster}`;
-        parkingImageElement.alt = 'Изображение с камеры парковки';
-        parkingImageElement.onerror = function () {
-            // Если изображение не загрузилось, скрываем его
-            this.style.display = 'none';
-        };
-        parkingImageElement.onload = function () {
-            // Показываем изображение при успешной загрузке
-            this.style.display = '';
-        };
-    } else {
-        parkingImageElement.removeAttribute('src');
-        parkingImageElement.alt = 'Нет изображения';
-        parkingImageElement.style.display = 'none';
-    }
-}
-
-async function fetchParkingDetails(parkingId) {
-    if (!parkingId) return;
-    try {
-        const response = await fetch(`${API_HOST}/api/parkings/${parkingId}`);
-        const result = await response.json();
-        if (result.status === 'success' && result.data) {
-            const updatedParking = formatParking(result.data);
-            const index = parkingData.findIndex((parking) => parking.id === parkingId);
-            if (index !== -1) {
-                parkingData[index] = updatedParking;
-            } else {
-                parkingData.push(updatedParking);
+    // Обработка кликов по overlay
+    const overlay = document.getElementById('overlay');
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar && sidebar.classList.contains('active')) {
+                toggleSidebar();
             }
-            if (selectedParkingId === parkingId) {
-                const selectedIndex = parkingData.findIndex((parking) => parking.id === parkingId);
-                if (selectedIndex !== -1) {
-                    currentVideo = selectedIndex;
-                    updateVideoDisplay();
+            closeAuthModal();
+        });
+    }
+
+    // Обработка формы авторизации
+    const authForm = document.getElementById('authForm');
+    if (authForm) {
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const usernameInput = document.getElementById('authUsername');
+            const passwordInput = document.getElementById('authPassword');
+            const errorDiv = document.getElementById('authError');
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+
+            // Скрываем предыдущую ошибку
+            if (errorDiv) {
+                errorDiv.style.display = 'none';
+                errorDiv.textContent = '';
+            }
+
+            if (!username || !password) {
+                if (errorDiv) {
+                    errorDiv.textContent = 'Заполните все поля';
+                    errorDiv.style.display = 'block';
                 }
+                return;
             }
-        } else {
-            throw new Error('Unexpected response');
-        }
-    } catch (error) {
-        console.error('Failed to refresh parking:', error);
-        // При ошибке обновления показываем, что данные могут быть устаревшими
-        const lastUpdateInfoElement = document.getElementById('lastUpdateInfo');
-        if (lastUpdateInfoElement && selectedParkingId === parkingId) {
-            lastUpdateInfoElement.textContent = 'Ошибка обновления данных';
-            lastUpdateInfoElement.style.color = '#e74c3c';
-        }
-    }
-}
 
-async function fetchParkingData(showLoader = false) {
-    if (showLoader) {
-        toggleLoader(true);
-    }
-    try {
-        const response = await fetch(PARKINGS_ENDPOINT);
-        const result = await response.json();
-        if (result.status === 'success' && Array.isArray(result.data)) {
-            parkingData = result.data.map(formatParking);
-        } else {
-            throw new Error('Unexpected response');
-        }
-    } catch (error) {
-        console.error('Failed to load parkings:', error);
-        alert('Не удалось загрузить список парковок. Попробуйте позже.');
-        parkingData = [];
-    } finally {
-        updateParkingList();
-        if (parkingData.length) {
-            if (selectedParkingId) {
-                const preservedIndex = parkingData.findIndex((parking) => parking.id === selectedParkingId);
-                currentVideo = preservedIndex !== -1 ? preservedIndex : 0;
+            // Показываем загрузку
+            const submitBtn = authForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Вход...';
+
+            // Выполняем вход
+            const result = await authService.login(username, password);
+
+            if (result.success) {
+                closeAuthModal();
+                // Очищаем форму
+                usernameInput.value = '';
+                passwordInput.value = '';
+
+                // Перенаправляем в зависимости от роли
+                updateHeaderAuthStatus();
+                redirectByRole(result.user.role);
             } else {
-                currentVideo = 0;
+                // Показываем ошибку
+                if (errorDiv) {
+                    errorDiv.textContent = result.error || 'Ошибка авторизации';
+                    errorDiv.style.display = 'block';
+                }
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             }
-            updateVideoDisplay();
+        });
+    }
+
+    // Обновление статуса авторизации в header
+    function updateHeaderAuthStatus() {
+        const user = authService.getUser();
+        const authIcon = document.getElementById('authIcon');
+
+        if (!authIcon) return;
+
+        // Очищаем предыдущие обработчики
+        authIcon.onclick = null;
+        authIcon.className = 'auth-icon';
+
+        if (user) {
+            // Пользователь авторизован - делаем ссылку
+            authIcon.innerHTML = `👤 ${user.username}`;
+            authIcon.title = `Пользователь: ${user.username} (${user.role === 'service_admin' ? 'Суперадмин' : 'Администратор парковки'}). Клик для перехода в админку.`;
+            authIcon.style.cursor = 'pointer';
+
+            // Определяем маршрут в зависимости от роли
+            authIcon.onclick = (e) => {
+                e.preventDefault();
+                if (user.role === 'service_admin') {
+                    router.navigate('/service-admin');
+                } else if (user.role === 'parking_administrator') {
+                    router.navigate('/parking-admin');
+                }
+            };
         } else {
-            selectedParkingId = null;
-            stopParkingPolling();
-        }
-        if (showLoader) {
-            toggleLoader(false);
+            // Пользователь не авторизован - показываем модальное окно
+            authIcon.innerHTML = '👤';
+            authIcon.title = 'Войти';
+            authIcon.style.cursor = 'pointer';
+            authIcon.onclick = () => {
+                openAuthModal();
+            };
         }
     }
-}
 
-function openAuthModal() {
-    document.getElementById('authModal').classList.add('active');
-    document.getElementById('overlay').classList.add('active');
-}
-
-function closeAuthModal() {
-    document.getElementById('authModal').classList.remove('active');
-    document.getElementById('overlay').classList.remove('active');
-}
-
-document.getElementById('overlay').addEventListener('click', () => {
-    if (document.getElementById('sidebar').classList.contains('active')) {
-        toggleSidebar();
+    // Перенаправление в зависимости от роли
+    function redirectByRole(role) {
+        if (role === 'service_admin') {
+            router.navigate('/service-admin');
+        } else if (role === 'parking_administrator') {
+            router.navigate('/parking-admin');
+        } else {
+            router.navigate('/');
+        }
     }
-    closeAuthModal();
+
+    // Защита маршрутов
+    function requireAuth(requiredRole = null) {
+        return (params) => {
+            if (!authService.isAuthenticated()) {
+                router.navigate('/');
+                openAuthModal();
+                return;
+            }
+
+            if (requiredRole && !authService.hasRole(requiredRole)) {
+                router.navigate('/');
+                alert('У вас нет доступа к этой странице');
+                return;
+            }
+        };
+    }
+
+    // Функция для проверки авторизации суперадмина
+    async function requireSuperAdmin() {
+        if (window.app) {
+            window.app.toggleLoader(true);
+        }
+
+        try {
+            const user = await authService.getCurrentUser();
+
+            if (!user || !authService.isSuperAdmin()) {
+                if (window.app) {
+                    window.app.toggleLoader(false);
+                }
+                router.navigate('/');
+                if (user && !authService.isSuperAdmin()) {
+                    alert('Только суперадминистратор может получить доступ к этой странице');
+                } else {
+                    openAuthModal();
+                }
+                return null;
+            }
+
+            if (window.app) {
+                window.app.toggleLoader(false);
+            }
+
+            return user;
+        } catch (error) {
+            console.error('Error checking super admin:', error);
+            if (window.app) {
+                window.app.toggleLoader(false);
+            }
+            return null;
+        }
+    }
+
+    // Регистрируем защищенные маршруты для суперадмина
+    // Подмаршруты должны быть зарегистрированы ПЕРЕД основным маршрутом
+    router.route('/service-admin/parkings', async (params) => {
+        const user = await requireSuperAdmin();
+        if (!user) return;
+
+        if (currentView && currentView.destroy) {
+            currentView.destroy();
+        }
+        currentView = new ServiceAdminParkingsView();
+        currentView.render(params);
+    });
+
+    router.route('/service-admin/:path', async (params) => {
+        const user = await requireSuperAdmin();
+        if (!user) return;
+
+        if (currentView && currentView.destroy) {
+            currentView.destroy();
+        }
+        currentView = new AdminView();
+        currentView.render(params);
+    });
+
+    router.route('/service-admin', async (params) => {
+        const user = await requireSuperAdmin();
+        if (!user) return;
+
+        if (currentView && currentView.destroy) {
+            currentView.destroy();
+        }
+        currentView = new ServiceAdminView();
+        currentView.render(params);
+    });
+
+    router.route('/parking-admin', async (params) => {
+        // Показываем лоадер во время проверки
+        if (window.app) {
+            window.app.toggleLoader(true);
+        }
+
+        try {
+            // Проверяем токен на сервере перед отображением
+            const user = await authService.getCurrentUser();
+
+            if (!user || !authService.isParkingAdmin()) {
+                if (window.app) {
+                    window.app.toggleLoader(false);
+                }
+                router.navigate('/');
+                if (user && !authService.isParkingAdmin()) {
+                    alert('Только администратор парковки может получить доступ к этой странице');
+                } else {
+                    openAuthModal();
+                }
+                return;
+            }
+
+            // Скрываем лоадер перед рендерингом, так как ParkingAdminView сам управляет лоадером
+            if (window.app) {
+                window.app.toggleLoader(false);
+            }
+
+            if (currentView && currentView.destroy) {
+                currentView.destroy();
+            }
+            currentView = new ParkingAdminView();
+            currentView.render(params);
+        } catch (error) {
+            console.error('Error in parking-admin route:', error);
+            if (window.app) {
+                window.app.toggleLoader(false);
+            }
+        }
+    });
+
+    // Обработка выхода
+    window.logout = function () {
+        if (confirm('Вы уверены, что хотите выйти?')) {
+            authService.logout();
+            updateHeaderAuthStatus();
+            router.navigate('/');
+        }
+    };
+
+    // Слушаем изменения авторизации
+    window.addEventListener('auth-changed', () => {
+        updateHeaderAuthStatus();
+    });
+
+    // Проверяем авторизацию при загрузке
+    authService.getCurrentUser().then((user) => {
+        updateHeaderAuthStatus();
+        // Если пользователь был авторизован, но токен невалиден, перенаправляем на главную
+        if (!user && authService.isAuthenticated()) {
+            console.warn('Token is invalid, redirecting to home');
+            router.navigate('/');
+        }
+    }).catch((error) => {
+        console.error('Error checking current user:', error);
+        updateHeaderAuthStatus();
+    });
+
+    // Обработка выхода через контекстное меню (правый клик) или через кнопку в админке
+    // Основной клик теперь перенаправляет в админку (обрабатывается в updateHeaderAuthStatus)
+
+    // Запускаем роутер после регистрации всех маршрутов
+    router.start();
+    updateHeaderAuthStatus();
 });
-
-document.querySelector('.auth-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    alert('Авторизация выполнена');
-    closeAuthModal();
-});
-
-fetchParkingData(true);
-

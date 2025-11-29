@@ -29,14 +29,10 @@ services:
       MODEL_PATH: /app/parking_classifier.pt
       SLOTS_PATH: /app/slots.json
       PORT: 5000
-    volumes:
-      - ../nn/parking_classifier.pt:/app/parking_classifier.pt:ro
-      - ../nn/slots.json:/app/slots.json:ro
     restart: unless-stopped
 
   server:
-    build:
-      context: .
+    image: node:lts
     container_name: smart-park-server
     environment:
       DB_HOST: db
@@ -48,6 +44,10 @@ services:
       NODE_ENV: production
       NN_SERVICE_URL: http://nn-service:5000
       NN_SERVICE_TIMEOUT: 30000
+    volumes:
+      - ./:/app
+    working_dir: /app
+    command: npm run dev
     ports:
       - "3000:3000"
     depends_on:

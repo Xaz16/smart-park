@@ -6,7 +6,7 @@ export class ParkingCameraRepository {
     parkingId?: number,
     cameraId?: number
   ): Promise<ParkingCamera[]> {
-    let query = 'SELECT * FROM parking_camera WHERE 1=1';
+    let query = 'SELECT * FROM parking_camera WHERE id=1';
     const params: any[] = [];
     let paramCount = 1;
 
