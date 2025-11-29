@@ -35,7 +35,7 @@ class ServiceAdminView {
                     <p>Создание и управление пользователями системы</p>
                 </div>
                 
-                <div class="admin-card" onclick="toast.info('Функционал в разработке')">
+                <div class="admin-card" onclick="router.navigate('/service-admin/cameras')">
                     <div class="admin-card-icon">📹</div>
                     <h3>Управление камерами</h3>
                     <p>Настройка и управление камерами</p>

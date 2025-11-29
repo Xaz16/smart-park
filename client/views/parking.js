@@ -8,14 +8,27 @@ class ParkingView {
 
     render(params) {
         this.parkingId = params.id;
+        // Сохраняем экземпляр в window для доступа из кнопки
+        window.parkingView = this;
+        
         const mainContent = document.querySelector('.main-content');
         if (!mainContent) return;
 
+        // Проверяем, является ли пользователь service_admin
+        const user = authService.getUser();
+        const isServiceAdmin = user && user.role === 'service_admin';
+
         mainContent.innerHTML = `
-            <div style="margin-bottom: 1rem;">
+            <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
                 <a href="#" data-route="/" style="color: #3498db; text-decoration: none; font-size: 1rem;">
                     ← Назад к списку парковок
                 </a>
+                ${isServiceAdmin ? `
+                    <button onclick="window.parkingView.openEditModal()" 
+                            style="padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        ⚙️ Управление
+                    </button>
+                ` : ''}
             </div>
             <section class="parking-details">
                 <p>Адрес: <span id="parkingAddress">—</span></p>
@@ -268,6 +281,17 @@ class ParkingView {
                 window.app.toggleLoader(false);
             }
         }
+    }
+
+    openEditModal() {
+        // Переходим на страницу управления парковками и открываем модальное окно редактирования
+        router.navigate('/service-admin/parkings');
+        // Ждем, пока страница загрузится, и открываем модальное окно
+        setTimeout(() => {
+            if (window.serviceAdminParkingsView && this.parkingId) {
+                window.serviceAdminParkingsView.openEditModal(this.parkingId);
+            }
+        }, 300);
     }
 
     destroy() {

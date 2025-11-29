@@ -2,10 +2,18 @@ import pool from '../config/database';
 import { Camera, CreateCameraInput, UpdateCameraInput } from '../types';
 
 export class CameraRepository {
-  async findAll(): Promise<Camera[]> {
-    const result = await pool.query(
-      'SELECT * FROM camera ORDER BY created_at DESC'
-    );
+  async findAll(isActive?: boolean): Promise<Camera[]> {
+    let query = 'SELECT * FROM camera';
+    const params: any[] = [];
+    
+    if (isActive !== undefined) {
+      query += ' WHERE is_active = $1';
+      params.push(isActive);
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    
+    const result = await pool.query(query, params);
     return result.rows;
   }
 

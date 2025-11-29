@@ -58,16 +58,16 @@ class ServiceAdminUsersView {
 
     renderUsersList() {
         return `
+            <div style="margin-bottom: 1rem;">
+                <button onclick="router.navigate('/service-admin')" style="padding: 0.5rem 1rem; background: #95a5a6; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem;">
+                    ← Назад к панели
+                </button>
+            </div>
             <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
                 <h1 style="color: #2c3e50; margin: 0;">Управление пользователями</h1>
-                <div style="display: flex; gap: 1rem;">
-                    <button onclick="router.navigate('/service-admin')" style="padding: 0.5rem 1rem; background: #95a5a6; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                        ← Назад
-                    </button>
-                    <button onclick="window.serviceAdminUsersView.openCreateModal()" style="padding: 0.5rem 1rem; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                        + Создать пользователя
-                    </button>
-                </div>
+                <button onclick="window.serviceAdminUsersView.openCreateModal()" style="padding: 0.5rem 1rem; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    + Создать пользователя
+                </button>
             </div>
 
             <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
@@ -500,7 +500,13 @@ class ServiceAdminUsersView {
             ? `Вы уверены, что хотите активировать пользователя "${user.username}"?`
             : `Вы уверены, что хотите деактивировать пользователя "${user.username}"?`;
 
-        if (!confirm(confirmMessage)) {
+        const confirmed = await confirmDialog.show(confirmMessage, {
+            title: isActive ? 'Активация пользователя' : 'Деактивация пользователя',
+            confirmText: isActive ? 'Активировать' : 'Деактивировать',
+            cancelText: 'Отмена'
+        });
+
+        if (!confirmed) {
             return;
         }
 
@@ -546,7 +552,16 @@ class ServiceAdminUsersView {
     }
 
     async deleteUser(userId, username) {
-        if (!confirm(`Вы уверены, что хотите удалить пользователя "${username}"?\n\nЭто действие нельзя отменить!`)) {
+        const confirmed = await confirmDialog.danger(
+            `Вы уверены, что хотите удалить пользователя "${username}"?\n\nЭто действие нельзя отменить!`,
+            {
+                title: 'Удаление пользователя',
+                confirmText: 'Удалить',
+                cancelText: 'Отмена'
+            }
+        );
+
+        if (!confirmed) {
             return;
         }
 

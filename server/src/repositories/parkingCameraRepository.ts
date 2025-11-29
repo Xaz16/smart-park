@@ -6,20 +6,25 @@ export class ParkingCameraRepository {
     parkingId?: number,
     cameraId?: number
   ): Promise<ParkingCamera[]> {
-    let query = 'SELECT * FROM parking_camera WHERE id=1';
+    let query = 'SELECT * FROM parking_camera';
     const params: any[] = [];
     let paramCount = 1;
+    const conditions: string[] = [];
 
     if (parkingId) {
-      query += ` AND parking_id = $${paramCount}`;
+      conditions.push(`parking_id = $${paramCount}`);
       params.push(parkingId);
       paramCount++;
     }
 
     if (cameraId) {
-      query += ` AND camera_id = $${paramCount}`;
+      conditions.push(`camera_id = $${paramCount}`);
       params.push(cameraId);
       paramCount++;
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
     }
 
     query += ' ORDER BY created_at DESC';

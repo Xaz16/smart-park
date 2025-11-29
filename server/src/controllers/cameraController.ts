@@ -9,7 +9,16 @@ export const getAllCameras = async (
   next: NextFunction
 ) => {
   try {
-    const cameras = await cameraRepository.findAll();
+    // Поддерживаем фильтрацию по is_active через query параметр
+    const isActiveParam = req.query.is_active;
+    let isActive: boolean | undefined;
+    
+    if (isActiveParam !== undefined) {
+      // Преобразуем строку в boolean
+      isActive = isActiveParam === 'true' || isActiveParam === true;
+    }
+    
+    const cameras = await cameraRepository.findAll(isActive);
     res.json({
       status: 'success',
       data: cameras,

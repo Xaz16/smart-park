@@ -11,13 +11,13 @@ class ServiceAdminParkingsView {
         if (!mainContent) return;
 
         mainContent.innerHTML = `
+            <div style="margin-bottom: 1rem;">
+                <button onclick="router.navigate('/service-admin')" style="padding: 0.5rem 1rem; background: #95a5a6; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem;">
+                    ← Назад к панели
+                </button>
+            </div>
             <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <a href="#" data-route="/service-admin" style="color: #3498db; text-decoration: none; font-size: 1rem; margin-right: 1rem;">
-                        ← Назад к панели
-                    </a>
-                    <h1 style="color: #2c3e50; margin: 0; display: inline;">Управление парковками</h1>
-                </div>
+                <h1 style="color: #2c3e50; margin: 0;">Управление парковками</h1>
                 <button onclick="window.logout()" style="padding: 0.5rem 1rem; background: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer;">
                     Выйти
                 </button>
@@ -674,7 +674,8 @@ class ServiceAdminParkingsView {
         const API_HOST = getAPIHost();
         const headers = authService.getAuthHeaders();
         
-        const response = await fetch(`${API_HOST}/api/cameras`, {
+        // Запрашиваем только активные камеры для привязки к парковке
+        const response = await fetch(`${API_HOST}/api/cameras?is_active=true`, {
             headers: headers
         });
 
@@ -703,8 +704,8 @@ class ServiceAdminParkingsView {
 
         const result = await response.json();
         if (result.status === 'success' && Array.isArray(result.data)) {
-            // Возвращаем массив ID камер
-            return result.data.map(pc => pc.camera_id);
+            // Возвращаем массив ID камер, нормализуя их в числа
+            return result.data.map(pc => +pc.camera_id).filter(id => !isNaN(id));
         }
         return [];
     }
@@ -731,21 +732,34 @@ class ServiceAdminParkingsView {
 
     renderEditForm(parking, users, parkingAdmins, cameras, parkingCameras, allParkingCameras) {
         const assignedAdminIds = new Set(parkingAdmins);
-        const assignedCameraIds = new Set(parkingCameras);
+        // Нормализуем ID для корректного сравнения
+        const assignedCameraIds = new Set(parkingCameras.map(id => +id));
+        const parkingId = +parking.id;
         
         // Определяем занятые камеры (привязанные к другим парковкам)
         const occupiedCameraIds = new Set();
         allParkingCameras.forEach(pc => {
+            // Нормализуем ID для корректного сравнения
+            const pcParkingId = +pc.parking_id;
+            const pcCameraId = +pc.camera_id;
+            
             // Если камера привязана к другой парковке (не к текущей), она занята
-            if (pc.parking_id !== parking.id) {
-                occupiedCameraIds.add(pc.camera_id);
+            if (pcParkingId !== parkingId) {
+                occupiedCameraIds.add(pcCameraId);
             }
         });
         
         // Фильтруем камеры: показываем только свободные или уже привязанные к этой парковке
-        const availableCameras = cameras.filter(camera => 
-            !occupiedCameraIds.has(camera.id) || assignedCameraIds.has(camera.id)
-        );
+        const availableCameras = cameras.filter(camera => {
+            const cameraId = +camera.id;
+            // Показываем камеру, если она:
+            // 1. Уже привязана к текущей парковке (всегда показываем привязанные)
+            if (assignedCameraIds.has(cameraId)) {
+                return true;
+            }
+            // 2. Не занята другой парковкой (свободные камеры)
+            return !occupiedCameraIds.has(cameraId);
+        });
         
         return `
             <form id="editParkingForm" onsubmit="event.preventDefault(); window.serviceAdminParkingsView.saveParking(${parking.id})">
@@ -798,14 +812,17 @@ class ServiceAdminParkingsView {
                     <div id="parkingCamerasList" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 1rem;">
                         ${availableCameras.length === 0 
                             ? '<p style="color: #999; text-align: center;">Нет доступных камер</p>'
-                            : availableCameras.map(camera => `
-                                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem; ${assignedCameraIds.has(camera.id) ? 'background: #e3f2fd;' : ''}">
-                                    <input type="checkbox" value="${camera.id}" ${assignedCameraIds.has(camera.id) ? 'checked' : ''} 
-                                           onchange="window.serviceAdminParkingsView.toggleCamera(${parking.id}, ${camera.id}, this.checked)"
+                            : availableCameras.map(camera => {
+                                const cameraId = +camera.id;
+                                const isAssigned = assignedCameraIds.has(cameraId);
+                                return `
+                                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem; ${isAssigned ? 'background: #e3f2fd;' : ''}">
+                                    <input type="checkbox" class="camera-checkbox" data-camera-id="${cameraId}" value="${cameraId}" ${isAssigned ? 'checked' : ''} 
                                            style="width: 18px; height: 18px; cursor: pointer;">
-                                    <span>📹 ${camera.name} (${camera.camera_type || 'rtsp'}) ${camera.is_active ? '✅' : '❌'}</span>
+                                    <span>📹 ${camera.name} (${camera.camera_type || 'rtsp'}) ${camera.is_active ? '✅' : '❌'} ${isAssigned ? '<span style="color: #2196F3; font-weight: bold;">[Привязана]</span>' : ''}</span>
                                 </label>
-                            `).join('')
+                            `;
+                            }).join('')
                         }
                     </div>
                     ${availableCameras.length === 0 
@@ -872,6 +889,7 @@ class ServiceAdminParkingsView {
         }
 
         try {
+            // Сначала обновляем данные парковки
             const response = await fetch(`${API_HOST}/api/parkings/${parkingId}`, {
                 method: 'PUT',
                 headers: headers,
@@ -883,13 +901,13 @@ class ServiceAdminParkingsView {
                 throw new Error(errorData.message || 'Ошибка обновления парковки');
             }
 
-            const result = await response.json();
-            if (result.status === 'success') {
-                toast.success('Парковка успешно обновлена!');
-                this.closeEditModal();
-                // Обновляем список парковок
-                await this.fetchParkings();
-            }
+            // Затем обновляем привязки камер
+            await this.updateParkingCameras(parkingId);
+
+            toast.success('Парковка успешно обновлена!');
+            this.closeEditModal();
+            // Обновляем список парковок
+            await this.fetchParkings();
         } catch (error) {
             console.error('Failed to update parking:', error);
             toast.error('Ошибка: ' + error.message);
@@ -900,33 +918,52 @@ class ServiceAdminParkingsView {
         }
     }
 
-    async toggleCamera(parkingId, cameraId, assign) {
+    async updateParkingCameras(parkingId) {
+        // Получаем текущие привязки камер
+        const currentCameras = await this.fetchParkingCameras(parkingId);
+        // Нормализуем ID для корректного сравнения
+        const currentCameraIds = new Set(currentCameras.map(id => +id));
+
+        // Получаем выбранные камеры из формы
+        const selectedCheckboxes = document.querySelectorAll('.camera-checkbox:checked');
+        const selectedCameraIds = new Set();
+        selectedCheckboxes.forEach(checkbox => {
+            const cameraId = parseInt(checkbox.dataset.cameraId);
+            if (!isNaN(cameraId)) {
+                selectedCameraIds.add(cameraId);
+            }
+        });
+
+        // Определяем, какие камеры нужно добавить, а какие удалить
+        const camerasToAdd = [];
+        const camerasToRemove = [];
+
+        selectedCameraIds.forEach(cameraId => {
+            if (!currentCameraIds.has(cameraId)) {
+                camerasToAdd.push(cameraId);
+            }
+        });
+
+        currentCameraIds.forEach(cameraId => {
+            if (!selectedCameraIds.has(cameraId)) {
+                camerasToRemove.push(cameraId);
+            }
+        });
+
+        console.log('updateParkingCameras:', {
+            parkingId,
+            currentCameraIds: Array.from(currentCameraIds),
+            selectedCameraIds: Array.from(selectedCameraIds),
+            camerasToAdd,
+            camerasToRemove
+        });
+
         const API_HOST = getAPIHost();
         const headers = authService.getAuthHeaders();
 
-        try {
-            if (assign) {
-                // Добавляем камеру к парковке
-                const response = await fetch(`${API_HOST}/api/parking-cameras`, {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify({
-                        parking_id: parkingId,
-                        camera_id: cameraId
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Ошибка добавления камеры');
-                }
-
-                toast.success('Камера успешно добавлена к парковке');
-                
-                // Обновляем список камер после успешного добавления
-                await this.refreshCamerasList(parkingId);
-            } else {
-                // Удаляем камеру из парковки
+        // Удаляем камеры, которые были отвязаны
+        for (const cameraId of camerasToRemove) {
+            try {
                 const response = await fetch(`${API_HOST}/api/parking-cameras/relation/remove`, {
                     method: 'DELETE',
                     headers: headers,
@@ -937,21 +974,45 @@ class ServiceAdminParkingsView {
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Ошибка удаления камеры');
+                    const errorData = await response.json().catch(() => ({}));
+                    console.warn(`Failed to remove camera ${cameraId}:`, errorData.message);
                 }
-
-                toast.success('Камера успешно удалена из парковки');
-                
-                // Обновляем список камер после успешного удаления
-                await this.refreshCamerasList(parkingId);
+            } catch (error) {
+                console.warn(`Error removing camera ${cameraId}:`, error);
             }
-        } catch (error) {
-            console.error('Failed to toggle camera:', error);
-            toast.error('Ошибка: ' + error.message);
-            // Обновляем список камер, чтобы вернуть чекбокс в исходное состояние
-            await this.refreshCamerasList(parkingId);
         }
+
+        // Добавляем новые камеры
+        for (const cameraId of camerasToAdd) {
+            try {
+                const response = await fetch(`${API_HOST}/api/parking-cameras`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        parking_id: parkingId,
+                        camera_id: cameraId
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    // Игнорируем ошибку дублирования (камера уже привязана)
+                    if (response.status !== 409) {
+                        console.warn(`Failed to add camera ${cameraId}:`, errorData.message);
+                    }
+                }
+            } catch (error) {
+                console.warn(`Error adding camera ${cameraId}:`, error);
+            }
+        }
+    }
+
+    // Метод toggleCamera больше не используется - привязка камер происходит при сохранении формы
+    // Оставлен для обратной совместимости, но не выполняет никаких действий
+    async toggleCamera(parkingId, cameraId, assign) {
+        // Этот метод больше не используется
+        // Привязка камер теперь происходит только при нажатии "Сохранить"
+        console.warn('toggleCamera is deprecated. Camera binding now happens on form save.');
     }
 
     async refreshCamerasList(parkingId) {
@@ -964,31 +1025,46 @@ class ServiceAdminParkingsView {
             
             const camerasList = document.getElementById('parkingCamerasList');
             if (camerasList) {
-                const assignedCameraIds = new Set(parkingCameras);
+                const parkingIdNum = +parkingId;
+                // Нормализуем ID для корректного сравнения
+                const assignedCameraIds = new Set(parkingCameras.map(id => +id));
                 
                 // Определяем занятые камеры (привязанные к другим парковкам)
                 const occupiedCameraIds = new Set();
                 allParkingCameras.forEach(pc => {
-                    if (pc.parking_id !== parkingId) {
-                        occupiedCameraIds.add(pc.camera_id);
+                    const pcParkingId = +pc.parking_id;
+                    const pcCameraId = +pc.camera_id;
+                    // Если камера привязана к другой парковке (не к текущей), она занята
+                    if (pcParkingId !== parkingIdNum) {
+                        occupiedCameraIds.add(pcCameraId);
                     }
                 });
                 
                 // Фильтруем камеры: показываем только свободные или уже привязанные к этой парковке
-                const availableCameras = cameras.filter(camera => 
-                    !occupiedCameraIds.has(camera.id) || assignedCameraIds.has(camera.id)
-                );
+                const availableCameras = cameras.filter(camera => {
+                    const cameraId = +camera.id;
+                    // Показываем камеру, если она:
+                    // 1. Уже привязана к текущей парковке (всегда показываем привязанные)
+                    if (assignedCameraIds.has(cameraId)) {
+                        return true;
+                    }
+                    // 2. Не занята другой парковкой (свободные камеры)
+                    return !occupiedCameraIds.has(cameraId);
+                });
                 
                 camerasList.innerHTML = availableCameras.length === 0 
                     ? '<p style="color: #999; text-align: center;">Нет доступных камер</p>'
-                    : availableCameras.map(camera => `
-                        <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem; ${assignedCameraIds.has(camera.id) ? 'background: #e3f2fd;' : ''}">
-                            <input type="checkbox" value="${camera.id}" ${assignedCameraIds.has(camera.id) ? 'checked' : ''} 
-                                   onchange="window.serviceAdminParkingsView.toggleCamera(${parkingId}, ${camera.id}, this.checked)"
+                    : availableCameras.map(camera => {
+                        const cameraId = +camera.id;
+                        const isAssigned = assignedCameraIds.has(cameraId);
+                        return `
+                        <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem; ${isAssigned ? 'background: #e3f2fd;' : ''}">
+                            <input type="checkbox" class="camera-checkbox" data-camera-id="${cameraId}" value="${cameraId}" ${isAssigned ? 'checked' : ''} 
                                    style="width: 18px; height: 18px; cursor: pointer;">
-                            <span>📹 ${camera.name} (${camera.camera_type || 'rtsp'}) ${camera.is_active ? '✅' : '❌'}</span>
+                            <span>📹 ${camera.name} (${camera.camera_type || 'rtsp'}) ${camera.is_active ? '✅' : '❌'} ${isAssigned ? '<span style="color: #2196F3; font-weight: bold;">[Привязана]</span>' : ''}</span>
                         </label>
-                    `).join('');
+                    `;
+                    }).join('');
             }
         } catch (refreshError) {
             console.error('Failed to refresh cameras list:', refreshError);

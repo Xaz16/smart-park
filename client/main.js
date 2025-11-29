@@ -307,6 +307,17 @@ document.addEventListener('DOMContentLoaded', () => {
         currentView.render(params);
     });
 
+    router.route('/service-admin/cameras', async (params) => {
+        const user = await requireSuperAdmin();
+        if (!user) return;
+
+        if (currentView && currentView.destroy) {
+            currentView.destroy();
+        }
+        currentView = new ServiceAdminCamerasView();
+        currentView.render(params);
+    });
+
     router.route('/service-admin/:path', async (params) => {
         const user = await requireSuperAdmin();
         if (!user) return;
@@ -371,8 +382,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Обработка выхода
-    window.logout = function () {
-        if (confirm('Вы уверены, что хотите выйти?')) {
+    window.logout = async function () {
+        const confirmed = await confirmDialog.show('Вы уверены, что хотите выйти?', {
+            title: 'Выход из системы',
+            confirmText: 'Выйти',
+            cancelText: 'Отмена'
+        });
+
+        if (confirmed) {
             authService.logout();
             updateHeaderAuthStatus();
             router.navigate('/');
