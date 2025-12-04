@@ -666,3 +666,6 @@ class ServiceAdminCamerasView {
     }
 }
 
+export { ServiceAdminCamerasView };
+window.ServiceAdminCamerasView = ServiceAdminCamerasView;
+

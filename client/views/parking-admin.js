@@ -219,3 +219,6 @@ class ParkingAdminView {
     }
 }
 
+export { ParkingAdminView };
+window.ParkingAdminView = ParkingAdminView;
+

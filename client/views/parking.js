@@ -296,3 +296,6 @@ class ParkingView {
     }
 }
 
+export { ParkingView };
+window.ParkingView = ParkingView;
+

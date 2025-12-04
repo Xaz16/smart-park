@@ -215,3 +215,6 @@ class HomeView {
         // Очистка не требуется, так как нет polling
     }
 }
+
+export { HomeView };
+window.HomeView = HomeView;

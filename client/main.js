@@ -2,6 +2,16 @@ if (typeof authService === 'undefined') {
     console.error('authService не загружен! Убедитесь, что services/auth.js подключен перед main.js');
 }
 
+// Импортируем все view классы
+import './views/home.js';
+import './views/parking.js';
+import './views/admin.js';
+import './views/service-admin.js';
+import './views/service-admin-parkings.js';
+import './views/service-admin-users.js';
+import './views/service-admin-cameras.js';
+import './views/parking-admin.js';
+
 let currentView = null;
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');

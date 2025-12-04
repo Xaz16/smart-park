@@ -1102,3 +1102,6 @@ class ServiceAdminParkingsView {
     }
 }
 
+export { ServiceAdminParkingsView };
+window.ServiceAdminParkingsView = ServiceAdminParkingsView;
+

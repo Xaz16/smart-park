@@ -54,20 +54,15 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     emptyOutDir: true,
-    // Отключаем объединение в один файл для сохранения структуры
     rollupOptions: {
       input: './index.html',
       output: {
-        // Сохраняем исходные имена файлов
-        entryFileNames: (chunkInfo) => {
-          // Сохраняем структуру для основных файлов
-          const name = chunkInfo.name;
-          if (name === 'index') return 'index.html';
-          return '[name].js';
-        },
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
-          if (assetInfo.name === 'index.html') return 'index.html';
+          // Сохраняем index.html в корне
+          if (assetInfo.name && assetInfo.name.endsWith('index.html')) {
+            return 'index.html';
+          }
           return 'assets/[name]-[hash].[ext]';
         }
       }

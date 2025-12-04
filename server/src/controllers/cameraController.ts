@@ -15,7 +15,7 @@ export const getAllCameras = async (
     
     if (isActiveParam !== undefined) {
       // Преобразуем строку в boolean
-      isActive = isActiveParam === 'true' || isActiveParam === true;
+      isActive = isActiveParam === 'true';
     }
     
     const cameras = await cameraRepository.findAll(isActive);

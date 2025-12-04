@@ -54,3 +54,6 @@ class ServiceAdminView {
     }
 }
 
+export { ServiceAdminView };
+window.ServiceAdminView = ServiceAdminView;
+

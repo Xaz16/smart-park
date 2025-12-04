@@ -68,3 +68,6 @@ class AdminView {
     }
 }
 
+export { AdminView };
+window.AdminView = AdminView;
+

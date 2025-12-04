@@ -610,6 +610,9 @@ class ServiceAdminUsersView {
     }
 }
 
+export { ServiceAdminUsersView };
+window.ServiceAdminUsersView = ServiceAdminUsersView;
+
 // Делаем view доступным глобально
 window.serviceAdminUsersView = null;
 
