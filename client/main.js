@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         } else {
             // Пользователь не авторизован - показываем иконку входа и модальное окно
-            authIcon.innerHTML = '🔑';
+            authIcon.innerHTML = 'Войти 🔑';
             authIcon.title = 'Войти';
             authIcon.style.cursor = 'pointer';
             authIcon.onclick = () => {
@@ -389,10 +389,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const userPromise = authService.getCurrentUser();
-            const timeoutPromise = new Promise((_, reject) => 
+            const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Timeout')), 5000)
             );
-            
+
             const user = await Promise.race([userPromise, timeoutPromise]);
 
             if (!user || !authService.isParkingAdmin()) {

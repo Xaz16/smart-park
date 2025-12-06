@@ -4,9 +4,89 @@
     box-sizing: border-box;
 }
 
+input,
+textarea,
+select {
+    background-color: #ffffff !important;
+    color: #2c3e50 !important;
+    border: 2px solid #bdc3c7;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: #3498db;
+    background-color: #ffffff !important;
+    color: #2c3e50 !important;
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+    background-color: #ecf0f1 !important;
+    color: #7f8c8d !important;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #95a5a6 !important;
+    opacity: 1;
+}
+
 body {
     background-color: #f5f5f5;
     font-family: Verdana, sans-serif;
+    color: #2c3e50;
+}
+
+table {
+    color: #2c3e50 !important;
+}
+
+table td,
+table th,
+table tr {
+    color: #2c3e50 !important;
+}
+
+td,
+th {
+    color: #2c3e50 !important;
+}
+
+tbody td,
+tbody th,
+thead td,
+thead th {
+    color: #2c3e50 !important;
+}
+
+p,
+span,
+div,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+label,
+li {
+    color: #2c3e50;
+}
+
+a {
+    color: #3498db;
+}
+
+a:hover {
+    color: #2980b9;
 }
 
 .header {
@@ -356,6 +436,8 @@ body {
     margin-bottom: 1rem;
     border: 1px solid #ddd;
     border-radius: 5px;
+    background-color: #ffffff !important;
+    color: #2c3e50 !important;
 }
 
 .password-input-wrapper {
@@ -366,6 +448,8 @@ body {
 .password-input-wrapper input {
     padding-right: 2.5rem;
     margin-bottom: 0;
+    background-color: #ffffff !important;
+    color: #2c3e50 !important;
 }
 
 .auth-form .password-input-wrapper .password-toggle {
@@ -816,25 +900,36 @@ body {
     border: 2px solid #bdc3c7;
     border-radius: 5px;
     font-size: 1rem;
-    color: #2c3e50;
-    background-color: #ffffff;
+    color: #2c3e50 !important;
+    background-color: #ffffff !important;
     box-sizing: border-box;
     transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .form-control:hover {
     border-color: #95a5a6;
+    background-color: #ffffff !important;
+    color: #2c3e50 !important;
 }
 
 .form-control:focus {
     outline: none;
     border-color: #3498db;
     box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-    background-color: #ffffff;
+    background-color: #ffffff !important;
+    color: #2c3e50 !important;
 }
 
 .form-control::placeholder {
-    color: #95a5a6;
+    color: #95a5a6 !important;
+    opacity: 1;
+}
+
+.form-control:disabled {
+    background-color: #ecf0f1 !important;
+    color: #7f8c8d !important;
+    cursor: not-allowed;
+    opacity: 0.7;
 }
 
 @media (max-width: 768px) {

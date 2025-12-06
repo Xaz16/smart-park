@@ -101,12 +101,11 @@ export const updateAppUser = async (
 
     const { id } = req.params;
     const userId = parseInt(id);
+    const updates: UpdateAppUserInput = req.body;
 
     if (userId === req.user.userId && updates.is_active === false) {
       throw new AppError('Вы не можете деактивировать самого себя', 400);
     }
-
-    const updates: UpdateAppUserInput = req.body;
 
     let passwordHash: string | undefined;
     if (updates.password) {

@@ -106,7 +106,8 @@ class ServiceAdminUsersView {
         const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString('ru-RU') : '—';
         
         const currentUser = authService.getUser();
-        const isCurrentUser = currentUser && currentUser.userId && +user.id === +currentUser.userId;
+        const currentUserId = currentUser?.id || currentUser?.userId;
+        const isCurrentUser = currentUser && currentUserId && +user.id === +currentUserId;
 
         return `
             <tr style="border-bottom: 1px solid #dee2e6;">
@@ -127,13 +128,17 @@ class ServiceAdminUsersView {
                         </button>
                         ${isCurrentUser ? `
                             <button disabled
-                                    style="padding: 0.4rem 0.8rem; background: #95a5a6; color: white; border: none; border-radius: 5px; cursor: not-allowed; font-size: 0.85rem; opacity: 0.6;"
-                                    title="Вы не можете деактивировать самого себя">
+                                    style="padding: 0.4rem 0.8rem; background: #bdc3c7 !important; color: #7f8c8d !important; border: 1px solid #95a5a6 !important; border-radius: 5px; cursor: not-allowed !important; font-size: 0.85rem; opacity: 0.7; pointer-events: none;"
+                                    title="Вы не можете деактивировать самого себя"
+                                    onmouseover="this.style.opacity='0.7'"
+                                    onmouseout="this.style.opacity='0.7'">
                                 🔒 Деактивировать
                             </button>
                             <button disabled
-                                    style="padding: 0.4rem 0.8rem; background: #95a5a6; color: white; border: none; border-radius: 5px; cursor: not-allowed; font-size: 0.85rem; opacity: 0.6;"
-                                    title="Вы не можете удалить самого себя">
+                                    style="padding: 0.4rem 0.8rem; background: #bdc3c7 !important; color: #7f8c8d !important; border: 1px solid #95a5a6 !important; border-radius: 5px; cursor: not-allowed !important; font-size: 0.85rem; opacity: 0.7; pointer-events: none;"
+                                    title="Вы не можете удалить самого себя"
+                                    onmouseover="this.style.opacity='0.7'"
+                                    onmouseout="this.style.opacity='0.7'">
                                 🗑️ Удалить
                             </button>
                         ` : `
@@ -500,7 +505,8 @@ class ServiceAdminUsersView {
         }
 
         const currentUser = authService.getUser();
-        if (currentUser && currentUser.userId && +userId === +currentUser.userId) {
+        const currentUserId = currentUser?.id || currentUser?.userId;
+        if (currentUser && currentUserId && +userId === +currentUserId) {
             toast.error('Вы не можете деактивировать самого себя');
             return;
         }
@@ -573,7 +579,8 @@ class ServiceAdminUsersView {
 
     async deleteUser(userId, username) {
         const currentUser = authService.getUser();
-        if (currentUser && currentUser.userId && +userId === +currentUser.userId) {
+        const currentUserId = currentUser?.id || currentUser?.userId;
+        if (currentUser && currentUserId && +userId === +currentUserId) {
             toast.error('Вы не можете удалить самого себя');
             return;
         }
