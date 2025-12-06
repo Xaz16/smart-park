@@ -104,6 +104,9 @@ class ServiceAdminUsersView {
         const statusColor = user.is_active ? '#27ae60' : '#95a5a6';
         const roleText = user.role === 'service_admin' ? 'Суперадминистратор' : 'Администратор парковки';
         const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString('ru-RU') : '—';
+        
+        const currentUser = authService.getUser();
+        const isCurrentUser = currentUser && currentUser.userId && +user.id === +currentUser.userId;
 
         return `
             <tr style="border-bottom: 1px solid #dee2e6;">
@@ -122,14 +125,27 @@ class ServiceAdminUsersView {
                                 style="padding: 0.4rem 0.8rem; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.85rem;">
                             ✏️ Редактировать
                         </button>
-                        <button onclick="window.serviceAdminUsersView.toggleUserStatus(${user.id}, ${String(!user.is_active)})" 
-                                style="padding: 0.4rem 0.8rem; background: ${user.is_active ? '#f39c12' : '#27ae60'}; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.85rem;">
-                            ${user.is_active ? '🔒 Деактивировать' : '✅ Активировать'}
-                        </button>
-                        <button onclick="window.serviceAdminUsersView.deleteUser(${user.id}, '${user.username}')" 
-                                style="padding: 0.4rem 0.8rem; background: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.85rem;">
-                            🗑️ Удалить
-                        </button>
+                        ${isCurrentUser ? `
+                            <button disabled
+                                    style="padding: 0.4rem 0.8rem; background: #95a5a6; color: white; border: none; border-radius: 5px; cursor: not-allowed; font-size: 0.85rem; opacity: 0.6;"
+                                    title="Вы не можете деактивировать самого себя">
+                                🔒 Деактивировать
+                            </button>
+                            <button disabled
+                                    style="padding: 0.4rem 0.8rem; background: #95a5a6; color: white; border: none; border-radius: 5px; cursor: not-allowed; font-size: 0.85rem; opacity: 0.6;"
+                                    title="Вы не можете удалить самого себя">
+                                🗑️ Удалить
+                            </button>
+                        ` : `
+                            <button onclick="window.serviceAdminUsersView.toggleUserStatus(${user.id}, ${String(!user.is_active)})" 
+                                    style="padding: 0.4rem 0.8rem; background: ${user.is_active ? '#f39c12' : '#27ae60'}; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.85rem;">
+                                ${user.is_active ? '🔒 Деактивировать' : '✅ Активировать'}
+                            </button>
+                            <button onclick="window.serviceAdminUsersView.deleteUser(${user.id}, '${user.username}')" 
+                                    style="padding: 0.4rem 0.8rem; background: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.85rem;">
+                                🗑️ Удалить
+                            </button>
+                        `}
                     </div>
                 </td>
             </tr>
@@ -483,6 +499,12 @@ class ServiceAdminUsersView {
             return;
         }
 
+        const currentUser = authService.getUser();
+        if (currentUser && currentUser.userId && +userId === +currentUser.userId) {
+            toast.error('Вы не можете деактивировать самого себя');
+            return;
+        }
+
         // Преобразуем строку в boolean, если нужно
         // newStatus может быть строкой "true" или "false" из onclick
         let isActive;
@@ -550,6 +572,12 @@ class ServiceAdminUsersView {
     }
 
     async deleteUser(userId, username) {
+        const currentUser = authService.getUser();
+        if (currentUser && currentUser.userId && +userId === +currentUser.userId) {
+            toast.error('Вы не можете удалить самого себя');
+            return;
+        }
+
         const confirmed = await confirmDialog.danger(
             `Вы уверены, что хотите удалить пользователя "${username}"?\n\nЭто действие нельзя отменить!`,
             {

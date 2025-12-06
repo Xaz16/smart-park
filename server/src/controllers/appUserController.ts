@@ -100,6 +100,12 @@ export const updateAppUser = async (
     }
 
     const { id } = req.params;
+    const userId = parseInt(id);
+
+    if (userId === req.user.userId && updates.is_active === false) {
+      throw new AppError('Вы не можете деактивировать самого себя', 400);
+    }
+
     const updates: UpdateAppUserInput = req.body;
 
     let passwordHash: string | undefined;
@@ -148,7 +154,13 @@ export const deleteAppUser = async (
     }
 
     const { id } = req.params;
-    const deleted = await appUserRepository.delete(parseInt(id));
+    const userId = parseInt(id);
+
+    if (userId === req.user.userId) {
+      throw new AppError('Вы не можете удалить самого себя', 400);
+    }
+
+    const deleted = await appUserRepository.delete(userId);
 
     if (!deleted) {
       throw new AppError('User not found', 404);
