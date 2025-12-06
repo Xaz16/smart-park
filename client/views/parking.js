@@ -1,3 +1,6 @@
+import PhotoSwipe from 'photoswipe';
+import 'photoswipe/dist/photoswipe.css';
+
 class ParkingView {
     constructor() {
         this.parkingData = null;
@@ -13,20 +16,17 @@ class ParkingView {
         const mainContent = document.querySelector('.main-content');
         if (!mainContent) return;
 
-        const user = authService.getUser();
-        const isServiceAdmin = user && user.role === 'service_admin';
-
         mainContent.innerHTML = `
             <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
                 <a href="#" data-route="/" style="color: #3498db; text-decoration: none; font-size: 1rem;">
                     ← Назад к списку парковок
                 </a>
-                ${isServiceAdmin ? `
-                    <button onclick="window.parkingView.openEditModal()" 
+                <div id="adminControls" style="display: none;">
+                    <button onclick="window.parkingView.openAdminPanel()" 
                             style="padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                         ⚙️ Управление
                     </button>
-                ` : ''}
+                </div>
             </div>
             <section class="parking-details">
                 <p>Адрес: <span id="parkingAddress">—</span></p>
@@ -61,7 +61,7 @@ class ParkingView {
                 
                 <div class="video-container">
                     <div class="video-placeholder">
-                        <img id="parkingImage" src="" alt="видеотрансляция">
+                        <img id="parkingImage" src="" alt="видеотрансляция" style="cursor: pointer;" onclick="window.parkingView.openFullscreenImage(this.src)">
                     </div>
                 </div>
             </section>
@@ -127,6 +127,15 @@ class ParkingView {
         document.getElementById('parkingStatus').textContent = parking.isActive ? 'Активна' : 'Неактивна';
         document.getElementById('parkingCoords').textContent = `${parking.latitude}, ${parking.longitude}`;
         document.getElementById('parkingCreated').textContent = this.formatDate(parking.createdAt);
+
+        const adminControls = document.getElementById('adminControls');
+        if (adminControls) {
+            if (parking.hasAdminAccess) {
+                adminControls.style.display = 'block';
+            } else {
+                adminControls.style.display = 'none';
+            }
+        }
 
         const lastUpdateInfoElement = document.getElementById('lastUpdateInfo');
         if (lastUpdateInfoElement) {
@@ -213,7 +222,8 @@ class ParkingView {
             lastPicture: imageUrl,
             camera: parking.camera || null,
             analysisLastUpdate: lastUpdate,
-            hasAnalysis: analysis !== null && analysis !== undefined
+            hasAnalysis: analysis !== null && analysis !== undefined,
+            hasAdminAccess: parking.has_admin_access === true
         };
     }
 
@@ -238,6 +248,13 @@ class ParkingView {
             const separator = imageUrl.includes('?') ? '&' : '?';
             parkingImageElement.src = `${imageUrl}${separator}t=${cacheBuster}`;
             parkingImageElement.alt = 'Изображение с камеры парковки';
+            parkingImageElement.style.cursor = 'pointer';
+            parkingImageElement.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Image clicked, src:', parkingImageElement.src);
+                this.openFullscreenImage(parkingImageElement.src);
+            };
             parkingImageElement.onerror = function () {
                 this.style.display = 'none';
             };
@@ -251,6 +268,33 @@ class ParkingView {
         }
     }
 
+    openFullscreenImage(imageSrc) {
+        if (!imageSrc) {
+            console.error('No image source provided');
+            return;
+        }
+
+        console.log('Opening image:', imageSrc);
+
+        const items = [{
+            src: imageSrc,
+            w: 1920,
+            h: 1080
+        }];
+
+        try {
+            const gallery = new PhotoSwipe({
+                dataSource: items,
+                index: 0
+            });
+
+            gallery.init();
+        } catch (error) {
+            console.error('Error initializing PhotoSwipe:', error);
+            toast.error('Ошибка при открытии изображения: ' + error.message);
+        }
+    }
+
     async fetchParkingDetails(parkingId, showLoader = false) {
         if (!parkingId) return;
         const API_HOST = getAPIHost();
@@ -261,7 +305,7 @@ class ParkingView {
         
         try {
             const headers = authService.getAuthHeaders();
-            const response = await fetch(`${API_HOST}/api/parkings/${parkingId}`, {
+            const response = await fetch(`${API_HOST}/api/parkings/${parkingId}?public=true`, {
                 headers: headers
             });
             const result = await response.json();
@@ -282,13 +326,31 @@ class ParkingView {
     }
 
     openEditModal() {
-        // Переходим на страницу управления парковками и открываем модальное окно редактирования
-        router.navigate('/service-admin/parkings');
-        setTimeout(() => {
-            if (window.serviceAdminParkingsView && this.parkingId) {
-                window.serviceAdminParkingsView.openEditModal(this.parkingId);
-            }
-        }, 300);
+        const user = authService.getUser();
+        if (user && user.role === 'service_admin') {
+            router.navigate('/service-admin/parkings');
+            setTimeout(() => {
+                if (window.serviceAdminParkingsView && this.parkingId) {
+                    window.serviceAdminParkingsView.openEditModal(this.parkingId);
+                }
+            }, 300);
+        }
+    }
+
+    openAdminPanel() {
+        const user = authService.getUser();
+        if (!user) {
+            toast.error('Вы не авторизованы');
+            return;
+        }
+
+        if (user.role === 'service_admin') {
+            this.openEditModal();
+        } else if (user.role === 'parking_administrator') {
+            router.navigate(`/parking-admin/parkings/${this.parkingId}`);
+        } else {
+            toast.error('У вас нет доступа к управлению этой парковкой');
+        }
     }
 
     destroy() {

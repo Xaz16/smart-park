@@ -57,6 +57,20 @@ function closeAuthModal() {
         authModal.classList.remove('active');
         overlay.classList.remove('active');
     }
+
+    const authForm = document.getElementById('authForm');
+    if (authForm) {
+        const submitBtn = authForm.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Войти';
+        }
+        const errorDiv = document.getElementById('authError');
+        if (errorDiv) {
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+        }
+    }
 }
 
 let globalParkingData = [];
@@ -170,28 +184,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Показываем загрузку
             const submitBtn = authForm.querySelector('button[type="submit"]');
             const originalText = submitBtn.textContent;
             submitBtn.disabled = true;
             submitBtn.textContent = 'Вход...';
 
-            // Выполняем вход
-            const result = await authService.login(username, password);
+            try {
+                const result = await authService.login(username, password);
 
-            if (result.success) {
-                closeAuthModal();
-                // Очищаем форму
-                usernameInput.value = '';
-                passwordInput.value = '';
-
-                // Перенаправляем в зависимости от роли
-                updateHeaderAuthStatus();
-                redirectByRole(result.user.role);
-            } else {
-                // Показываем ошибку
+                if (result.success) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                    closeAuthModal();
+                    usernameInput.value = '';
+                    passwordInput.value = '';
+                    updateHeaderAuthStatus();
+                    redirectByRole(result.user.role);
+                } else {
+                    if (errorDiv) {
+                        errorDiv.textContent = result.error || 'Ошибка авторизации';
+                        errorDiv.style.display = 'block';
+                    }
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            } catch (error) {
+                console.error('Login error:', error);
                 if (errorDiv) {
-                    errorDiv.textContent = result.error || 'Ошибка авторизации';
+                    errorDiv.textContent = 'Не удалось подключиться к серверу';
                     errorDiv.style.display = 'block';
                 }
                 submitBtn.disabled = false;
@@ -354,12 +374,77 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     router.route('/parking-admin', async (params) => {
-        // Показываем лоадер во время проверки
         if (window.app) {
             window.app.toggleLoader(true);
         }
 
         try {
+            if (typeof window.ParkingAdminView === 'undefined') {
+                console.error('ParkingAdminView не загружен!');
+                if (window.app) {
+                    window.app.toggleLoader(false);
+                }
+                toast.error('Ошибка загрузки страницы. Пожалуйста, обновите страницу.');
+                return;
+            }
+
+            const userPromise = authService.getCurrentUser();
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout')), 5000)
+            );
+            
+            const user = await Promise.race([userPromise, timeoutPromise]);
+
+            if (!user || !authService.isParkingAdmin()) {
+                if (window.app) {
+                    window.app.toggleLoader(false);
+                }
+                router.navigate('/');
+                if (user && !authService.isParkingAdmin()) {
+                    toast.warning('Только администратор парковки может получить доступ к этой странице');
+                } else {
+                    openAuthModal();
+                }
+                return;
+            }
+
+            if (window.app) {
+                window.app.toggleLoader(false);
+            }
+
+            if (currentView && currentView.destroy) {
+                currentView.destroy();
+            }
+            currentView = new window.ParkingAdminView();
+            currentView.render(params);
+        } catch (error) {
+            console.error('Error in parking-admin route:', error);
+            if (error.message === 'Timeout') {
+                toast.error('Превышено время ожидания ответа сервера. Проверьте подключение.');
+            } else {
+                toast.error('Ошибка при загрузке страницы администратора парковки');
+            }
+            if (window.app) {
+                window.app.toggleLoader(false);
+            }
+        }
+    });
+
+    router.route('/parking-admin/parkings/:id', async (params) => {
+        if (window.app) {
+            window.app.toggleLoader(true);
+        }
+
+        try {
+            if (typeof window.ParkingAdminParkingView === 'undefined') {
+                console.error('ParkingAdminParkingView не загружен!');
+                if (window.app) {
+                    window.app.toggleLoader(false);
+                }
+                toast.error('Ошибка загрузки страницы. Пожалуйста, обновите страницу.');
+                return;
+            }
+
             const user = await authService.getCurrentUser();
 
             if (!user || !authService.isParkingAdmin()) {
@@ -375,7 +460,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Скрываем лоадер перед рендерингом, так как ParkingAdminView сам управляет лоадером
             if (window.app) {
                 window.app.toggleLoader(false);
             }
@@ -383,10 +467,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentView && currentView.destroy) {
                 currentView.destroy();
             }
-            currentView = new ParkingAdminView();
+            currentView = new window.ParkingAdminParkingView();
             currentView.render(params);
         } catch (error) {
-            console.error('Error in parking-admin route:', error);
+            console.error('Error in parking-admin/parkings/:id route:', error);
+            toast.error('Ошибка при загрузке страницы управления парковкой');
             if (window.app) {
                 window.app.toggleLoader(false);
             }

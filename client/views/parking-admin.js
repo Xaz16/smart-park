@@ -46,11 +46,23 @@ class ParkingAdminView {
         }
 
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
             const response = await fetch(`${API_HOST}/api/parkings`, {
-                headers: headers
+                headers: headers,
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
             
             if (!response.ok) {
+                if (response.status === 401) {
+                    toast.error('Ошибка авторизации. Пожалуйста, войдите в систему заново.');
+                    authService.logout();
+                    router.navigate('/');
+                    return;
+                }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
@@ -66,11 +78,19 @@ class ParkingAdminView {
             console.error('Failed to load parkings:', error);
             const list = document.getElementById('myParkingsList');
             if (list) {
-                list.innerHTML = `
-                    <div class="error-message">
-                        <p>Не удалось загрузить список парковок. Попробуйте позже.</p>
-                    </div>
-                `;
+                if (error.name === 'AbortError') {
+                    list.innerHTML = `
+                        <div class="error-message">
+                            <p>Превышено время ожидания ответа сервера. Проверьте подключение к интернету.</p>
+                        </div>
+                    `;
+                } else {
+                    list.innerHTML = `
+                        <div class="error-message">
+                            <p>Не удалось загрузить список парковок. Попробуйте позже.</p>
+                        </div>
+                    `;
+                }
             }
             this.parkingData = [];
         } finally {
@@ -100,7 +120,7 @@ class ParkingAdminView {
             const card = document.getElementById(`parking-card-${parking.id}`);
             if (card) {
                 card.addEventListener('click', () => {
-                    router.navigate(`/parking/${parking.id}`);
+                    router.navigate(`/parking-admin/parkings/${parking.id}`);
                 });
             }
         });

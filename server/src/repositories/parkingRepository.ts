@@ -14,8 +14,22 @@ export class ParkingRepository {
       return result.rows;
     }
 
+    if (userRole === 'service_admin') {
+      const result = await pool.query(
+        'SELECT * FROM parking ORDER BY created_at DESC'
+      );
+      return result.rows;
+    }
+
     const result = await pool.query(
-      'SELECT * FROM parking ORDER BY created_at DESC'
+      'SELECT * FROM parking WHERE is_active = true ORDER BY created_at DESC'
+    );
+    return result.rows;
+  }
+
+  async findAllActive(): Promise<Parking[]> {
+    const result = await pool.query(
+      'SELECT * FROM parking WHERE is_active = true ORDER BY created_at DESC'
     );
     return result.rows;
   }

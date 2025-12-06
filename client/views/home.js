@@ -176,7 +176,7 @@ class HomeView {
 
     async fetchParkingData(showLoader = false) {
         const API_HOST = getAPIHost();
-        const PARKINGS_ENDPOINT = `${API_HOST}/api/parkings`;
+        const PARKINGS_ENDPOINT = `${API_HOST}/api/parkings?public=true`;
 
         if (showLoader && window.app) {
             window.app.toggleLoader(true);

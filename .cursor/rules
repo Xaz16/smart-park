@@ -50,8 +50,18 @@ server/
 
 ### User Roles
 1. **Driver (driver)** - No authentication required, read-only access (GET requests only)
-2. **Parking Administrator (parking_administrator)** - Can manage only assigned parkings
-3. **Service Admin (service_admin)** - Full access to all system functions
+2. **Parking Administrator (parking_administrator)** - Can manage only assigned parkings. Key functions:
+   - View statistics for assigned parkings (total spots, free/occupied spots)
+   - View camera connection status and recognition system status
+   - Edit total number of parking spots for assigned parkings
+   - Generate reports for assigned parkings (% occupied spots, average occupancy by hours)
+   - Access is limited to parkings assigned via `user_parking` table
+3. **Service Admin (service_admin)** - Full access to all system functions:
+   - Manage all parkings (create, edit, delete)
+   - Manage all users (create, edit, delete, activate/deactivate)
+   - Manage all cameras (create, edit, delete, activate/deactivate)
+   - Assign parking administrators to parkings
+   - Assign cameras to parkings
 
 ### Authentication Flow
 - JWT tokens are used for authentication

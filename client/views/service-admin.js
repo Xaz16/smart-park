@@ -39,12 +39,6 @@ class ServiceAdminView {
                     <h3>Управление камерами</h3>
                     <p>Настройка и управление камерами</p>
                 </div>
-                
-                <div class="admin-card" onclick="toast.info('Функционал в разработке')">
-                    <div class="admin-card-icon">📊</div>
-                    <h3>Статистика и отчеты</h3>
-                    <p>Просмотр статистики по парковкам</p>
-                </div>
             </div>
         `;
     }

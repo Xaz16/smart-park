@@ -203,10 +203,10 @@ class ServiceAdminParkingsView {
                         ${users.length === 0 
                             ? '<p style="color: #999; text-align: center;">Нет доступных администраторов</p>'
                             : users.map(user => `
-                                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem; color: #2c3e50;">
                                     <input type="checkbox" value="${user.id}" 
                                            style="width: 18px; height: 18px; cursor: pointer;">
-                                    <span>${user.username} (ID: ${user.id})</span>
+                                    <span style="color: #2c3e50;">${user.username} (ID: ${user.id})</span>
                                 </label>
                             `).join('')
                         }
@@ -792,10 +792,10 @@ class ServiceAdminParkingsView {
                                 const cameraId = +camera.id;
                                 const isAssigned = assignedCameraIds.has(cameraId);
                                 return `
-                                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem; ${isAssigned ? 'background: #e3f2fd;' : ''}">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem; color: #2c3e50; ${isAssigned ? 'background: #e3f2fd;' : ''}">
                                     <input type="checkbox" class="camera-checkbox" data-camera-id="${cameraId}" value="${cameraId}" ${isAssigned ? 'checked' : ''} 
                                            style="width: 18px; height: 18px; cursor: pointer;">
-                                    <span>📹 ${camera.name} (${camera.camera_type || 'rtsp'}) ${camera.is_active ? '✅' : '❌'} ${isAssigned ? '<span style="color: #2196F3; font-weight: bold;">[Привязана]</span>' : ''}</span>
+                                    <span style="color: #2c3e50;">📹 ${camera.name} (${camera.camera_type || 'rtsp'}) ${camera.is_active ? '✅' : '❌'} ${isAssigned ? '<span style="color: #2196F3; font-weight: bold;">[Привязана]</span>' : ''}</span>
                                 </label>
                             `;
                             }).join('')
@@ -814,11 +814,11 @@ class ServiceAdminParkingsView {
                         ${users.length === 0 
                             ? '<p style="color: #999; text-align: center;">Нет доступных администраторов</p>'
                             : users.map(user => `
-                                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem; ${assignedAdminIds.has(user.id) ? 'background: #e8f5e9;' : ''}">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem; color: #2c3e50; ${assignedAdminIds.has(user.id) ? 'background: #e8f5e9;' : ''}">
                                     <input type="checkbox" value="${user.id}" ${assignedAdminIds.has(user.id) ? 'checked' : ''} 
                                            onchange="window.serviceAdminParkingsView.toggleAdmin(${parking.id}, ${user.id}, this.checked)"
                                            style="width: 18px; height: 18px; cursor: pointer;">
-                                    <span>${user.username} (ID: ${user.id})</span>
+                                    <span style="color: #2c3e50;">${user.username} (ID: ${user.id})</span>
                                 </label>
                             `).join('')
                         }
@@ -1017,10 +1017,10 @@ class ServiceAdminParkingsView {
                         const cameraId = +camera.id;
                         const isAssigned = assignedCameraIds.has(cameraId);
                         return `
-                        <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem; ${isAssigned ? 'background: #e3f2fd;' : ''}">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; cursor: pointer; border-radius: 5px; margin-bottom: 0.5rem; color: #2c3e50; ${isAssigned ? 'background: #e3f2fd;' : ''}">
                             <input type="checkbox" class="camera-checkbox" data-camera-id="${cameraId}" value="${cameraId}" ${isAssigned ? 'checked' : ''} 
                                    style="width: 18px; height: 18px; cursor: pointer;">
-                            <span>📹 ${camera.name} (${camera.camera_type || 'rtsp'}) ${camera.is_active ? '✅' : '❌'} ${isAssigned ? '<span style="color: #2196F3; font-weight: bold;">[Привязана]</span>' : ''}</span>
+                            <span style="color: #2c3e50;">📹 ${camera.name} (${camera.camera_type || 'rtsp'}) ${camera.is_active ? '✅' : '❌'} ${isAssigned ? '<span style="color: #2196F3; font-weight: bold;">[Привязана]</span>' : ''}</span>
                         </label>
                     `;
                     }).join('');

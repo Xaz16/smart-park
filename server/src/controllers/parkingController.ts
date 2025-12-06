@@ -13,8 +13,14 @@ export const getAllParkings = async (
   try {
     const userId = req.user?.userId;
     const userRole = req.user?.role;
+    const isPublic = req.query.public === 'true' || !req.user;
 
-    const parkings = await parkingRepository.findAll(userId, userRole);
+    let parkings;
+    if (isPublic) {
+      parkings = await parkingRepository.findAllActive();
+    } else {
+      parkings = await parkingRepository.findAll(userId, userRole);
+    }
     
     const parkingsWithAnalysis = parkings.map((parking) => {
       const analysis = cameraService.getParkingAnalysis(parking.id);
@@ -70,14 +76,47 @@ export const getParkingById = async (
 ) => {
   try {
     const { id } = req.params;
+    const userId = req.user?.userId;
+    const userRole = req.user?.role;
+    const isPublic = req.query.public === 'true' || !req.user;
     const parking = await parkingRepository.findById(parseInt(id));
 
     if (!parking) {
       throw new AppError('Парковка не найдена', 404);
     }
 
+    if (userRole === 'service_admin') {
+      // service_admin видит все парковки
+    } else if (isPublic) {
+      // Для публичных запросов показываем только активные парковки
+      if (!parking.is_active) {
+        throw new AppError('Парковка не найдена', 404);
+      }
+    } else if (userRole === 'parking_administrator') {
+      // Для администратора парковки в админ-панели проверяем доступ
+      const hasAccess = await userParkingRepository.checkAccess(
+        userId!,
+        parking.id
+      );
+      if (!hasAccess) {
+        throw new AppError('Парковка не найдена', 404);
+      }
+    } else {
+      // Для остальных неавторизованных пользователей только активные
+      if (!parking.is_active) {
+        throw new AppError('Парковка не найдена', 404);
+      }
+    }
+
     const analysis = cameraService.getParkingAnalysis(parking.id);
     const cameraInfo = cameraService.getParkingCameraInfo(parking.id);
+
+    let hasAdminAccess = false;
+    if (userRole === 'service_admin') {
+      hasAdminAccess = true;
+    } else if (userRole === 'parking_administrator' && userId) {
+      hasAdminAccess = await userParkingRepository.checkAccess(userId, parking.id);
+    }
 
     if (analysis && cameraInfo) {
       console.log(
@@ -93,6 +132,7 @@ export const getParkingById = async (
       status: 'success',
       data: {
         ...parking,
+        has_admin_access: hasAdminAccess,
         analysis: analysis
           ? {
               spots_state: analysis.result.spots_state,
