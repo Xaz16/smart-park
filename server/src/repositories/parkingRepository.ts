@@ -54,13 +54,14 @@ export class ParkingRepository {
       latitude,
       longitude,
       is_active = true,
+      layout,
     } = data;
 
     const result = await pool.query(
-      `INSERT INTO parking (name, address, total_spots, latitude, longitude, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO parking (name, address, total_spots, latitude, longitude, is_active, layout)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [name, address, total_spots, latitude, longitude, is_active]
+      [name, address, total_spots, latitude, longitude, is_active, layout ? JSON.stringify(layout) : null]
     );
 
     return result.rows[0];
@@ -73,8 +74,13 @@ export class ParkingRepository {
 
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined) {
-        fields.push(`${key} = $${paramCount}`);
-        values.push(value);
+        if (key === 'layout' && value !== null) {
+          fields.push(`${key} = $${paramCount}`);
+          values.push(JSON.stringify(value));
+        } else {
+          fields.push(`${key} = $${paramCount}`);
+          values.push(value);
+        }
         paramCount++;
       }
     });

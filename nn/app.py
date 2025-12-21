@@ -24,14 +24,9 @@ SLOTS_PATH = os.getenv('SLOTS_PATH', '/app/slots.json')
 PORT = int(os.getenv('PORT', 5000))
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Настройки обработки изображений
-RESIZE_WIDTH = 1280  # должна совпадать с разметкой
-RESIZE_HEIGHT = 720  # должна совпадать с разметкой
-
-# Глобальные переменные для модели и разметки
+# Глобальные переменные для модели
 model = None
 transform = None
-slots_config = None
 
 def load_model():
     """Загружает PyTorch модель ResNet18"""
@@ -65,30 +60,15 @@ def load_model():
         traceback.print_exc()
         return False
 
-def load_slots():
-    """Загружает разметку слотов из slots.json"""
-    global slots_config
-    
-    try:
-        print(f"Loading slots configuration from {SLOTS_PATH}...")
-        with open(SLOTS_PATH, 'r', encoding='utf-8') as f:
-            slots_config = json.load(f)
-        print(f"Loaded {len(slots_config.get('slots', []))} slots")
-        return True
-    except Exception as e:
-        print(f"Error loading slots: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return False
 
-def process_image_with_slots(image_bytes):
+def process_image_with_slots(image_bytes, slots_config):
     """Обрабатывает изображение и определяет состояние каждого слота"""
-    global model, transform, slots_config
+    global model, transform
     
     if model is None:
         raise ValueError("Model not loaded")
     if slots_config is None:
-        raise ValueError("Slots configuration not loaded")
+        raise ValueError("Slots configuration not provided")
     
     # Загружаем изображение
     nparr = np.frombuffer(image_bytes, np.uint8)
@@ -97,8 +77,12 @@ def process_image_with_slots(image_bytes):
     if img is None:
         raise ValueError("Failed to decode image")
     
-    # Приводим к нужному размеру (тот же, что и при разметке)
-    img = cv2.resize(img, (RESIZE_WIDTH, RESIZE_HEIGHT))
+    # Получаем размер изображения из разметки
+    image_size = slots_config.get('image_size')
+    if isinstance(image_size, list) and len(image_size) == 2:
+        img = cv2.resize(img, (image_size[0], image_size[1]))
+    else:
+        raise ValueError("image_size is required in layout configuration and must be [width, height]")
     
     slots = slots_config.get('slots', [])
     spots_state = []
@@ -160,9 +144,7 @@ def health():
     return jsonify({
         'status': 'ok',
         'model_loaded': model is not None,
-        'slots_loaded': slots_config is not None,
-        'device': str(DEVICE),
-        'total_slots': len(slots_config.get('slots', [])) if slots_config else 0
+        'device': str(DEVICE)
     })
 
 @app.route('/predict', methods=['POST'])
@@ -171,11 +153,6 @@ def predict_image():
     if model is None:
         return jsonify({
             'error': 'Model not loaded'
-        }), 500
-    
-    if slots_config is None:
-        return jsonify({
-            'error': 'Slots configuration not loaded'
         }), 500
     
     try:
@@ -192,6 +169,20 @@ def predict_image():
                 'error': 'Empty file provided'
             }), 400
         
+        # Получаем разметку из запроса
+        layout_json = request.form.get('layout')
+        if not layout_json:
+            return jsonify({
+                'error': 'No layout provided. Use "layout" field in form-data with JSON string.'
+            }), 400
+        
+        try:
+            slots_config = json.loads(layout_json)
+        except json.JSONDecodeError as e:
+            return jsonify({
+                'error': f'Invalid layout JSON: {str(e)}'
+            }), 400
+        
         # Читаем изображение
         image_bytes = file.read()
         
@@ -201,7 +192,7 @@ def predict_image():
             }), 400
         
         # Обрабатываем изображение с разметкой
-        spots_state, slot_details = process_image_with_slots(image_bytes)
+        spots_state, slot_details = process_image_with_slots(image_bytes, slots_config)
         
         return jsonify({
             'status': 'success',
@@ -232,17 +223,23 @@ def predict_base64():
             'error': 'Model not loaded'
         }), 500
     
-    if slots_config is None:
-        return jsonify({
-            'error': 'Slots configuration not loaded'
-        }), 500
-    
     try:
         data = request.get_json()
         
         if not data or 'image' not in data:
             return jsonify({
                 'error': 'No image data provided. Send JSON with "image" field containing base64 string.'
+            }), 400
+        
+        if 'layout' not in data:
+            return jsonify({
+                'error': 'No layout provided. Send JSON with "layout" field containing layout JSON object.'
+            }), 400
+        
+        slots_config = data['layout']
+        if not isinstance(slots_config, dict):
+            return jsonify({
+                'error': 'Layout must be a JSON object.'
             }), 400
         
         import base64
@@ -256,7 +253,7 @@ def predict_base64():
         image_bytes = base64.b64decode(image_data)
         
         # Обрабатываем изображение с разметкой
-        spots_state, slot_details = process_image_with_slots(image_bytes)
+        spots_state, slot_details = process_image_with_slots(image_bytes, slots_config)
         
         return jsonify({
             'status': 'success',
@@ -282,13 +279,10 @@ def predict_base64():
 if __name__ == '__main__':
     print("Starting NN Service...")
     
-    if not load_slots():
-        print("Failed to load slots configuration. Exiting...")
-        exit(1)
-    
     if not load_model():
         print("Failed to load model. Exiting...")
         exit(1)
     
     print(f"NN Service is running on port {PORT}")
+    print("Note: Layout configuration should be provided with each request.")
     app.run(host='0.0.0.0', port=PORT, debug=False)

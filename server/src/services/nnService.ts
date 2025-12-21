@@ -41,10 +41,12 @@ class NNService {
   /**
    * Анализирует изображение и возвращает состояние парковочных мест
    * @param imageBuffer - буфер изображения
+   * @param layout - JSON разметка парковки
    * @param filename - имя файла (опционально)
    */
   async predictImage(
     imageBuffer: Buffer,
+    layout: Record<string, any>,
     filename?: string
   ): Promise<PredictionResult> {
     const startTime = Date.now();
@@ -56,6 +58,7 @@ class NNService {
         filename: imageName,
         contentType: 'image/jpeg',
       });
+      formData.append('layout', JSON.stringify(layout));
 
       console.log(`[NNService] Sending image "${imageName}" to NN service (size: ${imageBuffer.length} bytes)...`);
       
@@ -97,8 +100,12 @@ class NNService {
   /**
    * Анализирует изображение в base64 формате
    * @param base64Image - изображение в формате base64
+   * @param layout - JSON разметка парковки
    */
-  async predictImageBase64(base64Image: string): Promise<PredictionResult> {
+  async predictImageBase64(
+    base64Image: string,
+    layout: Record<string, any>
+  ): Promise<PredictionResult> {
     const startTime = Date.now();
     const imageSize = Math.round((base64Image.length * 3) / 4); // Примерный размер в байтах
     
@@ -107,7 +114,7 @@ class NNService {
       
       const response = await axios.post<PredictionResult>(
         `${NN_SERVICE_URL}/predict-base64`,
-        { image: base64Image },
+        { image: base64Image, layout },
         {
           headers: {
             'Content-Type': 'application/json',

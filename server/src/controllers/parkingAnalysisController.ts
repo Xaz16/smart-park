@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../middleware/errorHandler';
 import { nnService } from '../services/nnService';
+import { parkingRepository } from '../repositories/parkingRepository';
 import multer from 'multer';
 
 // Настройка multer для обработки файлов в памяти
@@ -35,7 +36,7 @@ export const uploadImage = upload.single('image');
 
 /**
  * Анализирует изображение парковки и возвращает состояние парковочных мест
- * POST /api/parking-analysis
+ * POST /api/parking-analysis?parking_id=1
  */
 export const analyzeParkingImage = async (
   req: Request,
@@ -47,11 +48,32 @@ export const analyzeParkingImage = async (
       throw new AppError('No image file provided', 400);
     }
 
+    const parkingId = req.query.parking_id 
+      ? parseInt(req.query.parking_id as string, 10)
+      : null;
+
+    if (!parkingId || isNaN(parkingId)) {
+      throw new AppError('parking_id query parameter is required', 400);
+    }
+
+    const parking = await parkingRepository.findById(parkingId);
+    if (!parking) {
+      throw new AppError(`Parking with id ${parkingId} not found`, 404);
+    }
+
+    if (!parking.layout) {
+      throw new AppError(`No layout found for parking ${parkingId}`, 400);
+    }
+
     const imageBuffer = req.file.buffer;
     const filename = req.file.originalname;
 
-    // Вызываем NN сервис для анализа изображения
-    const result = await nnService.predictImage(imageBuffer, filename);
+    // Вызываем NN сервис для анализа изображения с разметкой
+    const result = await nnService.predictImage(
+      imageBuffer,
+      parking.layout as Record<string, any>,
+      filename
+    );
 
     res.json({
       status: 'success',
@@ -76,6 +98,7 @@ export const analyzeParkingImage = async (
 /**
  * Анализирует изображение парковки в base64 формате
  * POST /api/parking-analysis/base64
+ * Body: { "image": "...", "parking_id": 1 }
  */
 export const analyzeParkingImageBase64 = async (
   req: Request,
@@ -83,7 +106,7 @@ export const analyzeParkingImageBase64 = async (
   next: NextFunction
 ) => {
   try {
-    const { image } = req.body;
+    const { image, parking_id } = req.body;
 
     if (!image) {
       throw new AppError(
@@ -96,8 +119,24 @@ export const analyzeParkingImageBase64 = async (
       throw new AppError('Image must be a base64 string', 400);
     }
 
-    // Вызываем NN сервис для анализа изображения
-    const result = await nnService.predictImageBase64(image);
+    if (!parking_id || typeof parking_id !== 'number') {
+      throw new AppError('parking_id is required and must be a number', 400);
+    }
+
+    const parking = await parkingRepository.findById(parking_id);
+    if (!parking) {
+      throw new AppError(`Parking with id ${parking_id} not found`, 404);
+    }
+
+    if (!parking.layout) {
+      throw new AppError(`No layout found for parking ${parking_id}`, 400);
+    }
+
+    // Вызываем NN сервис для анализа изображения с разметкой
+    const result = await nnService.predictImageBase64(
+      image,
+      parking.layout as Record<string, any>
+    );
 
     res.json({
       status: 'success',

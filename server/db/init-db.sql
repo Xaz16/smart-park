@@ -13,6 +13,7 @@ CREATE TABLE parking (
     latitude DECIMAL(10, 8),
     longitude DECIMAL(11, 8),
     is_active BOOLEAN DEFAULT true,
+    layout JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -22,6 +22,7 @@ export interface Parking {
   is_active: boolean;
   created_at: Date;
   last_picture?: string | null;
+  layout?: Record<string, any> | null;
 }
 
 export interface CreateParkingInput {
@@ -31,6 +32,7 @@ export interface CreateParkingInput {
   latitude?: number;
   longitude?: number;
   is_active?: boolean;
+  layout?: Record<string, any>;
 }
 
 export interface UpdateParkingInput {
@@ -40,6 +42,7 @@ export interface UpdateParkingInput {
   latitude?: number;
   longitude?: number;
   is_active?: boolean;
+  layout?: Record<string, any>;
 }
 
 export interface Camera {

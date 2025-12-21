@@ -5,6 +5,7 @@ import { parkingHistoryRepository } from '../repositories/parkingHistoryReposito
 import { parkingSpotRepository } from '../repositories/parkingSpotRepository';
 import { parkingCameraRepository } from '../repositories/parkingCameraRepository';
 import { cameraRepository } from '../repositories/cameraRepository';
+import { parkingRepository } from '../repositories/parkingRepository';
 import { Camera, CameraType } from '../types';
 
 // Путь к публичной директории
@@ -175,8 +176,21 @@ class CameraService {
         `[CameraService] Image URL for client: ${imageUrl || 'N/A'}`
       );
 
-      // Отправляем в NN сервис
-      const result = await nnService.predictImage(imageBuffer, imageName);
+      // Получаем разметку парковки из базы данных
+      const parking = await parkingRepository.findById(parkingId);
+      if (!parking || !parking.layout) {
+        console.warn(
+          `[CameraService] No layout found for parking ${parkingId}, skipping analysis`
+        );
+        return;
+      }
+
+      // Отправляем в NN сервис с разметкой
+      const result = await nnService.predictImage(
+        imageBuffer,
+        parking.layout as Record<string, any>,
+        imageName
+      );
       
       const totalProcessingTime = Date.now() - frameStartTime;
 
