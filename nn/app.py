@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""
-Python микросервис для анализа изображений парковки с помощью PyTorch модели.
-Использует разметку из slots.json для определения состояния каждого парковочного места.
-"""
-
 import os
 import io
 import json
@@ -20,7 +15,6 @@ CORS(app)
 
 # Конфигурация
 MODEL_PATH = os.getenv('MODEL_PATH', '/app/parking_classifier.pt')
-SLOTS_PATH = os.getenv('SLOTS_PATH', '/app/slots.json')
 PORT = int(os.getenv('PORT', 5000))
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -36,16 +30,77 @@ def load_model():
         print(f"Loading model from {MODEL_PATH}...")
         print(f"Using device: {DEVICE}")
         
-        # Создаем модель ResNet18 с 2 классами
-        model = models.resnet18()
-        model.fc = torch.nn.Linear(model.fc.in_features, 2)
+        # Загружаем checkpoint
+        checkpoint = torch.load(MODEL_PATH, map_location=DEVICE)
+        
+        # Проверяем, что загружено - модель или state_dict
+        if isinstance(checkpoint, torch.nn.Module):
+            # Это полная модель
+            model = checkpoint
+            model.eval()
+            model.to(DEVICE)
+            
+            transform = transforms.Compose([
+                transforms.Resize((128, 128)),
+                transforms.ToTensor(),
+                transforms.Normalize([0.5], [0.5])
+            ])
+            
+            print("Model loaded successfully!")
+            return True
+        elif isinstance(checkpoint, dict):
+            if 'state_dict' in checkpoint:
+                state_dict = checkpoint['state_dict']
+            else:
+                # Это state_dict напрямую (OrderedDict)
+                state_dict = checkpoint
+        else:
+            raise ValueError(f"Unknown checkpoint format: {type(checkpoint)}")
+        
+        # Создаем модель ResNet18
+        model = models.resnet18(pretrained=False)
+        
+        # Создаем правильную архитектуру fc на основе ключей в state_dict
+        # Если есть fc.0 и fc.3, значит это Sequential
+        fc_keys = [k for k in state_dict.keys() if k.startswith('fc.')]
+        if any('.0.' in k or '.3.' in k for k in fc_keys):
+            # Определяем размеры из state_dict
+            fc0_weight_shape = state_dict.get('fc.0.weight', None)
+            fc3_weight_shape = state_dict.get('fc.3.weight', None)
+            
+            if fc0_weight_shape is not None and fc3_weight_shape is not None:
+                # Размеры: fc.0.weight -> [256, 512], fc.3.weight -> [2, 256]
+                hidden_size = fc0_weight_shape.shape[0]  # 256
+                output_size = fc3_weight_shape.shape[0]   # 2
+                input_size = model.fc.in_features  # 512
+                
+                # Sequential архитектура: Linear -> ReLU -> Dropout -> Linear
+                import torch.nn as nn
+                model.fc = nn.Sequential(
+                    nn.Linear(input_size, hidden_size),
+                    nn.ReLU(),
+                    nn.Dropout(0.5),
+                    nn.Linear(hidden_size, output_size)
+                )
+            else:
+                # Fallback: используем стандартные размеры
+                import torch.nn as nn
+                model.fc = nn.Sequential(
+                    nn.Linear(model.fc.in_features, 256),
+                    nn.ReLU(),
+                    nn.Dropout(0.5),
+                    nn.Linear(256, 2)
+                )
+        else:
+            # Простая Linear архитектура
+            model.fc = torch.nn.Linear(model.fc.in_features, 2)
         
         # Загружаем веса
-        model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
+        model.load_state_dict(state_dict, strict=False)
         model.eval()
         model.to(DEVICE)
         
-        # Трансформации для изображений (как в предоставленном коде)
+        # Трансформации для изображений
         transform = transforms.Compose([
             transforms.Resize((128, 128)),
             transforms.ToTensor(),
